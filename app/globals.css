@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css/dist/tw-animate.css";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -28,13 +28,13 @@
   --accent-ai: #6457f9;
   --accent-ai-text: #8b82ff;
 
+  /* Overlay */
+  --overlay: rgba(0, 0, 0, 0.6);
+
   /* States */
   --state-error: #ff4d4f;
   --state-success: #34d399;
   --state-warning: #fbbf24;
-
-  /* Overlay */
-  --overlay: rgba(0, 0, 0, 0.6);
 
   /* ── shadcn semantic layer (always dark — no .dark toggle) ── */
   --background: var(--bg-base);
@@ -87,6 +87,7 @@
   --color-surface-border: var(--border-default);
   --color-subtle-border: var(--border-subtle);
   --color-brand: var(--accent-primary);
+  --color-overlay: var(--overlay);
   --color-brand-dim: var(--accent-primary-dim);
   --color-ai-accent: var(--accent-ai);
   --color-ai-text: var(--accent-ai-text);

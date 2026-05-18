@@ -299,6 +299,51 @@ Add `suppressHydrationWarning` to the `<body>` tag in `app/layout.tsx`:
 
 **When to use it:** Only on elements that browser extensions or third-party scripts are known to modify (typically `<html>` and `<body>`). Never use it to silence hydration errors in your own components — those are real bugs that need fixing.
 
+### Issue 3: Hardcoded `bg-black/60` in `dialog.tsx`
+
+**Where it was caught:** Code review flagged `components/ui/dialog.tsx` line 20 using a raw Tailwind color utility instead of a design token.
+
+**The violation:**
+```tsx
+"fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in ..."
+```
+
+`bg-black/60` means "pure black at 60% opacity." It works visually but breaks the project rule: all colors must come from CSS custom properties in `globals.css`. A hardcoded value can't be updated from one place — if the overlay opacity or tint ever needs to change, every file using `bg-black/60` would need to be found and updated individually.
+
+**The fix — three parts:**
+
+**1. Add the token to `:root` in `globals.css`:**
+```css
+/* Overlay */
+--overlay: rgba(0, 0, 0, 0.6);
+```
+This is the single source of truth. `rgba(0, 0, 0, 0.6)` is exactly what `bg-black/60` produced — same visual result, but now it has a name.
+
+**2. Expose it as a Tailwind utility in `@theme inline`:**
+```css
+--color-overlay: var(--overlay);
+```
+Tailwind v4 reads `@theme inline` and generates utility classes from it. The naming rule: `--color-X` becomes `bg-X`, `text-X`, `border-X`, etc. So this one line creates the `bg-overlay` class.
+
+**3. Use the token in `dialog.tsx`:**
+```tsx
+// Before
+"fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in ..."
+
+// After
+"fixed inset-0 z-50 bg-overlay data-[state=open]:animate-in ..."
+```
+Only the one class changed. All animation and positioning utilities stayed the same.
+
+**Full token addition pattern (reusable):**
+```
+1. :root          → --my-token: <raw value>;
+2. @theme inline  → --color-my-token: var(--my-token);
+3. Component      → className="bg-my-token"
+```
+
+> Full write-up with skipped findings: `docs/fixes/fix-dialog-overlay-token.md`
+
 ---
 
 ## Verification Steps
