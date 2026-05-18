@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+@import "tw-animate-css/dist/tw-animate.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -32,6 +32,9 @@
   --state-error: #ff4d4f;
   --state-success: #34d399;
   --state-warning: #fbbf24;
+
+  /* Overlay */
+  --overlay: rgba(0, 0, 0, 0.6);
 
   /* ── shadcn semantic layer (always dark — no .dark toggle) ── */
   --background: var(--bg-base);
