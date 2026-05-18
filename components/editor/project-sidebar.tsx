@@ -21,7 +21,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
         <button
           type="button"
           onClick={onClose}
-          className="flex items-center justify-center h-6 w-6 rounded-lg text-copy-muted hover:text-copy-primary transition-colors"
+          className="flex items-center justify-center h-6 w-6 rounded-xl text-copy-muted hover:text-copy-primary transition-colors"
           aria-label="Close sidebar"
         >
           <X className="h-4 w-4" />
