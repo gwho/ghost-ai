@@ -7,6 +7,13 @@ interface EditorNavbarProps {
   onToggleSidebar: () => void
 }
 
+/**
+ * Render the fixed top editor navigation bar with a sidebar toggle button.
+ *
+ * @param isSidebarOpen - Whether the editor sidebar is currently open; controls the toggle icon and aria-label
+ * @param onToggleSidebar - Click handler invoked to toggle the sidebar open state
+ * @returns The navigation bar element containing the sidebar toggle and layout placeholders
+ */
 export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-3 bg-surface border-b border-surface-border">
