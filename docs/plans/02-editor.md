@@ -37,14 +37,14 @@ From `context/feature-specs/02-editor.md`:
 
 ## Files Created
 
-```
+```text
 components/
 └── editor/
     ├── editor-navbar.tsx      ← NEW
     └── project-sidebar.tsx    ← NEW
 ```
 
-```
+```text
 context/
 └── progress-tracker.md       ← UPDATED (Feature 02 added to Completed)
 ```
@@ -99,6 +99,7 @@ export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarPro
 ```
 
 **Key styling decisions:**
+
 | Class | What it does |
 |---|---|
 | `fixed top-0 left-0 right-0` | Pins navbar to the top edge of the viewport regardless of scroll |
@@ -111,7 +112,7 @@ export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarPro
 ### Step 3 — project-sidebar.tsx
 
 **Why `"use client"`?**
-Two reasons: the close button has an `onClick` handler, and the shadcn `<Tabs>` component itself is already a Client Component. A Server Component cannot render a Client Component as a direct child without wrapping it — so the sidebar must also be a Client Component.
+The sidebar uses browser interactivity: the close button has an `onClick` handler, and the shadcn `<Tabs>` component manages its own active-tab state. Either of those is sufficient to require `"use client"`. Note: in Next.js App Router, Server Components *can* directly render Client Components — the client boundary is simply established at the import. The sidebar is a Client Component because it needs interactivity, not because of any rule about rendering hierarchy.
 
 **How the slide animation works:**
 Instead of toggling `display: none` (which is instant and jarring), we use a CSS `transform`. The sidebar always exists in the DOM. When closed, it's shifted 100% to the left off-screen. When open, the shift is removed. The `transition-transform duration-300` class smoothly animates between the two states.
@@ -198,7 +199,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
 
 After the components were built, they were wired into a dedicated editor route:
 
-```
+```text
 app/
 └── editor/
     ├── layout.tsx   ← NEW — owns sidebar state, renders navbar + sidebar
@@ -216,7 +217,8 @@ app/
 **Where it was caught:** The IDE's diagnostic panel flagged both buttons immediately after the files were written.
 
 **The warning:**
-```
+
+```text
 Button type attribute has not been set.
 ```
 
@@ -253,7 +255,8 @@ Add `type="button"` to every `<button>` that is not meant to submit a form:
 **Where it was caught:** The browser's dev overlay showed a hydration error after the layout was integrated and the dev server was running.
 
 **The error:**
-```
+
+```text
 A tree hydrated but some attributes of the server rendered HTML didn't match the client properties.
 ```
 
@@ -336,7 +339,8 @@ Tailwind v4 reads `@theme inline` and generates utility classes from it. The nam
 Only the one class changed. All animation and positioning utilities stayed the same.
 
 **Full token addition pattern (reusable):**
-```
+
+```text
 1. :root          → --my-token: <raw value>;
 2. @theme inline  → --color-my-token: var(--my-token);
 3. Component      → className="bg-my-token"

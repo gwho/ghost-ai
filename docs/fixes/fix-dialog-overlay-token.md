@@ -23,7 +23,8 @@ grep -n "bg-black" components/ui/dialog.tsx
 ```
 
 Output confirmed the issue was real:
-```
+
+```text
 20:        "fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in ...
 ```
 
@@ -83,7 +84,7 @@ Only the one class changed. Everything else — the positioning, z-index, and an
 
 During the fix, the IDE reported warnings like:
 
-```
+```text
 Unknown at rule @apply [unknownAtRules] (css)
 ```
 
@@ -109,7 +110,7 @@ The flag came from a VS Code Stylelint extension using its own bundled ruleset, 
 
 Here is the full flow for adding any new design token to this project:
 
-```
+```text
 Step 1: Add the raw value to :root in globals.css
         --my-token: #value or rgba(...);
 
