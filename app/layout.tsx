@@ -12,6 +12,14 @@ export const metadata: Metadata = {
   description: "Real-time collaborative system design workspace",
 }
 
+/**
+ * Render the application's root HTML structure with a dark, full-height layout.
+ *
+ * Renders the top-level `<html>` and `<body>` elements and places `children` inside the body.
+ *
+ * @param children - React nodes to be rendered within the document body
+ * @returns The root HTML element containing the provided `children`
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

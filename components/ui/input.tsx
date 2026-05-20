@@ -1,6 +1,13 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/**
+ * Renders a styled native `<input>` element with default layout and accessibility classes.
+ *
+ * @param className - Additional CSS classes to apply; they are merged with the component's default classes.
+ * @param type - The input type attribute (e.g., `"text"`, `"email"`, `"password"`).
+ * @returns The rendered `<input>` element.
+ */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input
