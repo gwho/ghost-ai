@@ -26,7 +26,7 @@ export default function SignInPage() {
       <div className="hidden md:flex md:w-1/2 flex-col bg-surface border-r border-surface-border px-14 py-10">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-brand flex-shrink-0" />
+          <div className="w-7 h-7 rounded-lg bg-brand shrink-0" />
           <span className="text-sm font-semibold text-copy-primary tracking-wide">Ghost AI</span>
         </div>
 
@@ -42,7 +42,7 @@ export default function SignInPage() {
           <ul className="mt-10 space-y-7">
             {features.map(({ icon: Icon, title, description }) => (
               <li key={title} className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-brand-dim flex items-center justify-center">
+                <div className="shrink-0 w-9 h-9 rounded-xl bg-brand-dim flex items-center justify-center">
                   <Icon className="h-4 w-4 text-brand" />
                 </div>
                 <div>

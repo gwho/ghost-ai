@@ -34,4 +34,4 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Session Notes
 
-- Add context needed to resume work in the next session.
+- Added beginner tutorial at `docs/tutorials/beginner-nextjs-typescript-component-basics.md` while studying `components/editor/project-sidebar.tsx`.
