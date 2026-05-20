@@ -4,17 +4,18 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 03 — Auth (complete)
+- Feature 04 — Project Dialogs & Editor Home (complete)
 
 ## Current Goal
 
-- Feature 04 — next planned feature.
+- Feature 05 — next planned feature.
 
 ## Completed
 
 - 01-design-system: shadcn/ui configured (base-nova style, @base-ui/react), all 7 UI primitive components added to components/ui/, lucide-react installed, lib/utils.ts cn() helper created, globals.css fully configured with project dark theme tokens and Tailwind v4 @theme mapping, html element marked dark.
 - 02-editor: components/editor/editor-navbar.tsx (fixed navbar, PanelLeftOpen/Close toggle), components/editor/project-sidebar.tsx (fixed overlay sidebar, Tabs: My Projects + Shared, New Project button). Dialog pattern confirmed ready via existing components/ui/dialog.tsx wired to design tokens.
 - 03-auth: ClerkProvider added to root layout with dark theme (@clerk/ui/themes) and CSS variable overrides. proxy.ts created at root for route protection (public: /sign-in, /sign-up; all else protected). Sign-in and sign-up pages use two-panel layout (left: logo/tagline/features, right: Clerk form; small screens: form only). / redirects authenticated → /editor, unauthenticated → /sign-in. UserButton added to editor navbar right section. Build verified passing.
+- 04-project-dialogs: Editor home screen with New Project button. Create/Rename/Delete dialogs with dedicated useProjectDialogs hook and ProjectDialogsProvider context. Sidebar project items with rename/delete actions (owned projects only); shared projects show no actions. Mobile backdrop scrim added to layout. All mock data — no persistence. Build clean, zero lint/TS errors.
 
 ## In Progress
 
@@ -22,7 +23,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Add the next planned feature unit here.
+- Feature 05 — next planned feature.
 
 ## Open Questions
 

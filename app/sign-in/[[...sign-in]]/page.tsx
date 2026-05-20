@@ -26,7 +26,7 @@ export default function SignInPage() {
       <div className="hidden md:flex md:w-1/2 flex-col bg-surface border-r border-surface-border px-14 py-10">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-brand shrink-0" />
+          <div className="w-7 h-7 rounded-xl bg-brand shrink-0" />
           <span className="text-sm font-semibold text-copy-primary tracking-wide">Ghost AI</span>
         </div>
 
