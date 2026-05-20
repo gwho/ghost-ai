@@ -22,6 +22,10 @@ Ensure all components match the existing dark theme in 'app/globals.css'.
 
 ### Check when done
 
-- All components import errors
+### Check when done
+
+- All components import without errors
+- 'cn()' works properly
+- No default light styling appears
 - 'cn()' works properly
 - No default light styling appears
