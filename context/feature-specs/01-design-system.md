@@ -16,12 +16,16 @@ Do not modify the generated 'components/ui/\*' files after installation.
 
 Also Install 'lucide-react'.
 
-Create 'lib/utils.ts' with a resuable 'cn()' helper for merging Tailwind classes.
+Create 'lib/utils.ts' with a reusable 'cn()' helper for merging Tailwind classes.
 
-Ensure all components match the existing dark theme in 'global.css'.
+Ensure all components match the existing dark theme in 'app/globals.css'.
 
 ### Check when done
 
-- All components import errors
+### Check when done
+
+- All components import without errors
 - 'cn()' works properly
-- No default light styling appers
+- No default light styling appears
+- 'cn()' works properly
+- No default light styling appears

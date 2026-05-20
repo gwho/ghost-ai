@@ -1,12 +1,13 @@
 /**
- * Render the Home page with centered "ghost AI" text.
+ * Redirects users to the editor when authenticated, or to sign-in otherwise.
  *
- * @returns A React element containing a full-height, centered div with the text "ghost AI".
+ * @returns Nothing because this route always redirects.
  */
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      ghost AI
-    </div>
-  )
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
+
+export default async function Home() {
+  const { userId } = await auth()
+  if (userId) redirect("/editor")
+  redirect(process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL ?? "/sign-in")
 }

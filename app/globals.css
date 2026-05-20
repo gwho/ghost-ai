@@ -28,6 +28,9 @@
   --accent-ai: #6457f9;
   --accent-ai-text: #8b82ff;
 
+  /* Overlay */
+  --overlay: rgba(0, 0, 0, 0.6);
+
   /* States */
   --state-error: #ff4d4f;
   --state-success: #34d399;
@@ -84,6 +87,7 @@
   --color-surface-border: var(--border-default);
   --color-subtle-border: var(--border-subtle);
   --color-brand: var(--accent-primary);
+  --color-overlay: var(--overlay);
   --color-brand-dim: var(--accent-primary-dim);
   --color-ai-accent: var(--accent-ai);
   --color-ai-text: var(--accent-ai-text);
@@ -126,9 +130,9 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Fonts */
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --font-heading: Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-mono: var(--font-geist-mono), "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-heading: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 
   /* Radius scale */
   --radius-sm: calc(var(--radius) * 0.6);
