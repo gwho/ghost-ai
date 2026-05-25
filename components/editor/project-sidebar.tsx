@@ -4,14 +4,14 @@ import { X, Plus, Pencil, Trash2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { useProjectDialogsContext } from "./project-dialogs-context"
-import type { MockProject } from "@/hooks/use-project-dialogs"
+import type { ProjectItem } from "@/lib/project-data"
 
 interface ProjectSidebarProps {
   isOpen: boolean
   onClose: () => void
 }
 
-function ProjectItem({ project }: { project: MockProject }) {
+function ProjectListItem({ project }: { project: ProjectItem }) {
   const { openRename, openDelete } = useProjectDialogsContext()
 
   return (
@@ -92,7 +92,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
             ) : (
               <div className="flex flex-col gap-0.5">
                 {ownedProjects.map((project) => (
-                  <ProjectItem key={project.id} project={project} />
+                  <ProjectListItem key={project.id} project={project} />
                 ))}
               </div>
             )}
@@ -104,7 +104,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
             ) : (
               <div className="flex flex-col gap-0.5">
                 {sharedProjects.map((project) => (
-                  <ProjectItem key={project.id} project={project} />
+                  <ProjectListItem key={project.id} project={project} />
                 ))}
               </div>
             )}
