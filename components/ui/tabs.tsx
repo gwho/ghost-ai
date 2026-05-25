@@ -6,6 +6,12 @@ import { cn } from "@/lib/utils"
 
 const Tabs = TabsPrimitive.Root
 
+/**
+ * Render a tab list container with the component's default styling.
+ *
+ * @param className - Additional CSS class name(s) to append to the base styles
+ * @returns A React element for the tab list with the provided classes merged into the component's base styling
+ */
 function TabsList({
   className,
   ...props
@@ -21,6 +27,12 @@ function TabsList({
   )
 }
 
+/**
+ * Render a tab trigger element styled with the component's default classes.
+ *
+ * @param className - Additional class names appended to the default styles.
+ * @returns The tab trigger element with merged class names.
+ */
 function TabsTrigger({
   className,
   ...props
@@ -36,6 +48,13 @@ function TabsTrigger({
   )
 }
 
+/**
+ * Render the content area for a tab with consistent base styling.
+ *
+ * Accepts the same props as the underlying tabs content element and merges an optional `className`.
+ *
+ * @returns The tab content element with top margin and focus-visible ring styling applied.
+ */
 function TabsContent({
   className,
   ...props

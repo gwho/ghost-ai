@@ -47,6 +47,13 @@ function ProjectItem({ project }: { project: MockProject }) {
   )
 }
 
+/**
+ * Renders the project sidebar with owned/shared tabs and project management actions.
+ *
+ * @param isOpen - Whether the sidebar is visible.
+ * @param onClose - Callback invoked when closing the sidebar.
+ * @returns The project sidebar UI.
+ */
 export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
   const { openCreate, ownedProjects, sharedProjects } = useProjectDialogsContext()
 

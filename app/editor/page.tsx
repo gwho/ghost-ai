@@ -3,7 +3,11 @@
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useProjectDialogsContext } from "@/components/editor/project-dialogs-context"
-
+/**
+ * Renders the editor empty state with a quick action to create a new project.
+ *
+ * @returns The editor call-to-action view.
+ */
 export default function EditorPage() {
   const { openCreate } = useProjectDialogsContext()
 
