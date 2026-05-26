@@ -46,7 +46,7 @@ export function useProjectActions(
   const pathname = usePathname()
 
   const [ownedProjects, setOwnedProjects] = useState(initialOwned)
-  const [sharedProjects, setSharedProjects] = useState(initialShared)
+  const sharedProjects = initialShared
   const [open, setOpen] = useState<DialogType>(null)
   const [targetProject, setTargetProject] = useState<ProjectItem | null>(null)
   const [createName, setCreateNameState] = useState("")
@@ -61,10 +61,6 @@ export function useProjectActions(
     setOwnedProjects(initialOwned)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownedKey])
-
-  useEffect(() => {
-    setSharedProjects(initialShared)
-  }, [initialShared])
 
   const setCreateName = (name: string) => {
     setCreateNameState(name)
