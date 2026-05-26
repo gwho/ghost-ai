@@ -1,42 +1,12 @@
-"use client"
+import { EditorShell } from "@/components/editor/editor-shell"
+import { getEditorProjects } from "@/lib/project-data"
 
-import { useState } from "react"
-import { EditorNavbar } from "@/components/editor/editor-navbar"
-import { ProjectSidebar } from "@/components/editor/project-sidebar"
-import { ProjectDialogsProvider } from "@/components/editor/project-dialogs-context"
-
-/**
- * Layout component that provides the editor UI shell with a navbar and project sidebar.
- *
- * @param children - Content rendered inside the editor's main area below the navbar
- * @returns The layout element containing the editor navbar, project sidebar, and main content area
- */
-export default function EditorLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+export default async function EditorLayout({ children }: { children: React.ReactNode }) {
+  const { owned, shared } = await getEditorProjects()
 
   return (
-    <ProjectDialogsProvider>
-      <div className="h-screen overflow-hidden bg-base">
-        <EditorNavbar
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-        />
-
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-overlay md:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-            aria-hidden="true"
-          />
-        )}
-
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-        />
-
-        <main className="pt-14 h-full">{children}</main>
-      </div>
-    </ProjectDialogsProvider>
+    <EditorShell initialOwned={owned} initialShared={shared}>
+      {children}
+    </EditorShell>
   )
 }
