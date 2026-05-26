@@ -46,7 +46,7 @@ export function useProjectActions(
   const pathname = usePathname()
 
   const [ownedProjects, setOwnedProjects] = useState(initialOwned)
-  const [sharedProjects] = useState(initialShared)
+  const [sharedProjects, setSharedProjects] = useState(initialShared)
   const [open, setOpen] = useState<DialogType>(null)
   const [targetProject, setTargetProject] = useState<ProjectItem | null>(null)
   const [createName, setCreateNameState] = useState("")
@@ -56,11 +56,15 @@ export function useProjectActions(
   const suffixRef = useRef(randomSuffix())
 
   // Re-sync when server re-fetches after router.refresh()
-  const ownedKey = initialOwned.map((p) => p.id).join(",")
+  const ownedKey = initialOwned.map((p) => `${p.id}:${p.name}`).join(",")
   useEffect(() => {
     setOwnedProjects(initialOwned)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownedKey])
+
+  useEffect(() => {
+    setSharedProjects(initialShared)
+  }, [initialShared])
 
   const setCreateName = (name: string) => {
     setCreateNameState(name)

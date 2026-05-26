@@ -14,10 +14,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (project.ownerId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const body = await req.json()
+  let body
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 })
+  }
+
+  if (typeof body.name !== 'string' || !body.name.trim()) {
+    return NextResponse.json({ error: 'Invalid or missing project name' }, { status: 400 })
+  }
+
+  const sanitizedName = body.name.trim()
   const updated = await prisma.project.update({
     where: { id: projectId },
-    data: { name: body.name },
+    data: { name: sanitizedName },
   })
 
   return NextResponse.json(updated)

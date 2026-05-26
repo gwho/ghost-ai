@@ -32,8 +32,12 @@ export async function getEditorProjects(): Promise<{
       : Promise.resolve([]),
   ])
 
+  const ownedIds = new Set(ownedRaw.map((p) => p.id))
+
   return {
     owned: ownedRaw.map((p) => ({ ...p, isOwned: true as const })),
-    shared: sharedRaw.map((pc) => ({ ...pc.project, isOwned: false as const })),
+    shared: sharedRaw
+      .filter((pc) => !ownedIds.has(pc.project.id))
+      .map((pc) => ({ ...pc.project, isOwned: false as const })),
   }
 }

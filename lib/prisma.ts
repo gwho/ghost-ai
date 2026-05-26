@@ -1,10 +1,14 @@
 import { PrismaClient } from '@/lib/generated/prisma'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
 
 function createPrismaClient(): PrismaClient {
-  const url = process.env.DATABASE_URL ?? ''
+  const url = process.env.DATABASE_URL
+
+  if (!url || url.trim() === '') {
+    throw new Error('Missing DATABASE_URL environment variable')
+  }
 
   if (url.startsWith('prisma+postgres://')) {
     return new PrismaClient({ accelerateUrl: url })

@@ -18,7 +18,13 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json().catch(() => ({}))
+  let body
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 })
+  }
+
   const name: string = (typeof body?.name === 'string' && body.name.trim()) || 'Untitled Project'
 
   const project = await prisma.project.create({
