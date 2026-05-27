@@ -14,7 +14,11 @@ function createPrismaClient(): PrismaClient {
     return new PrismaClient({ accelerateUrl: url })
   }
 
-  const adapter = new PrismaPg({ connectionString: url })
+  const normalizedUrl = url.replace(
+    /([?&])sslmode=(prefer|require|verify-ca)(&|$)/g,
+    '$1sslmode=verify-full$3',
+  )
+  const adapter = new PrismaPg({ connectionString: normalizedUrl })
   return new PrismaClient({ adapter })
 }
 
