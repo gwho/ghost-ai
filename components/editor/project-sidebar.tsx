@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { X, Plus, Pencil, Trash2 } from "lucide-react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { useProjectDialogsContext } from "./project-dialogs-context"
@@ -20,24 +21,24 @@ function ProjectListItem({
   isActive: boolean
 }) {
   const { openRename, openDelete } = useProjectDialogsContext()
-  const router = useRouter()
 
   return (
     <div
-      className={`group flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-elevated cursor-pointer ${
+      className={`group relative flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-elevated ${
         isActive ? "bg-elevated" : ""
       }`}
-      onClick={() => router.push(`/editor/${project.id}`)}
     >
-      <span className="text-sm text-copy-primary truncate">{project.name}</span>
+      <Link
+        href={`/editor/${project.id}`}
+        className="absolute inset-0 rounded-xl"
+        aria-label={project.name}
+      />
+      <span className="relative text-sm text-copy-primary truncate">{project.name}</span>
       {project.isOwned && (
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="relative flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              openRename(project)
-            }}
+            onClick={() => openRename(project)}
             className="flex items-center justify-center h-6 w-6 rounded-xl text-copy-muted hover:text-copy-primary transition-colors"
             aria-label={`Rename ${project.name}`}
           >
@@ -45,10 +46,7 @@ function ProjectListItem({
           </button>
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              openDelete(project)
-            }}
+            onClick={() => openDelete(project)}
             className="flex items-center justify-center h-6 w-6 rounded-xl text-copy-muted hover:text-error transition-colors"
             aria-label={`Delete ${project.name}`}
           >
