@@ -101,14 +101,21 @@ export function ShareDialog({
 
   useEffect(() => {
     if (!open) return
+    setError(null)
     setIsLoading(true)
     fetch(`/api/projects/${projectId}/collaborators`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error()
+        return r.json()
+      })
       .then((data: CollaboratorItem[]) => {
         setCollaborators(data)
         setIsLoading(false)
       })
-      .catch(() => setIsLoading(false))
+      .catch(() => {
+        setError('Failed to load collaborators')
+        setIsLoading(false)
+      })
   }, [open, projectId])
 
   async function handleCopy() {
