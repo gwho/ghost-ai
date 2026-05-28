@@ -28,6 +28,7 @@ function CreateProjectDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New Project</DialogTitle>
+          <DialogDescription>Give your new project a name to get started.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3 py-2">

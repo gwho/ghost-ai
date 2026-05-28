@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 07 — Wire Editor Home to Real API (complete)
+- Feature 09 — Share Dialog (complete)
 
 ## Current Goal
 
-- Feature 08 — next planned feature.
+- Feature 10 — next planned feature.
 
 ## Completed
 
@@ -19,6 +19,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - 05-prisma: Prisma 7 schema with multi-file support (prisma.config.ts + prisma/schema.prisma + prisma/models/project.prisma). Project and ProjectCollaborator models with correct relations, indexes, and cascade delete. lib/prisma.ts singleton branches on DATABASE_URL prefix (prisma+postgres:// → accelerateUrl, otherwise → @prisma/adapter-pg). Generated client at lib/generated/prisma. Migration applied to Prisma Postgres cloud DB. Build clean.
 - 06-project-apis: REST route handlers for GET/POST /api/projects and PATCH/DELETE /api/projects/[projectId]. Auth via Clerk auth(), 401 for unauthenticated, 403 for non-owner mutations. Default project name "Untitled Project". Backend only — no UI wiring. Build clean.
 - 07-wire-editor-home: lib/project-data.ts getEditorProjects() server helper (owned + shared via Clerk email). hooks/use-project-actions.ts replaces mock hook — real fetch/PATCH/DELETE calls, router.push on create, router.refresh on rename/delete, redirect to /editor if deleting active workspace. app/editor/layout.tsx converted to server component; client shell extracted to components/editor/editor-shell.tsx. app/editor/page.tsx converted to server component; New Project button extracted to editor-home-actions.tsx. Sidebar and dialogs typed against ProjectItem. Build clean.
+- 08-editor-workspace-shell: lib/project-access.ts with getCurrentIdentity() and getProjectAccess() helpers. components/editor/access-denied.tsx (lock icon, back link). app/editor/[roomId]/page.tsx server component — redirects unauthenticated to /sign-in, renders AccessDenied for missing/unauthorized projects, renders WorkspaceShell. components/editor/workspace-shell.tsx client component — workspace bar with project name, Share and AI toggle buttons; canvas placeholder; collapsible right AI sidebar placeholder. project-sidebar.tsx updated with usePathname() to highlight the active project. Removed accidentally committed macOS duplicates lib/prisma 2.ts and prisma/schema 2.prisma (were causing TypeScript type conflict). Build clean.
+- 09-share-dialog: REST endpoints GET/POST /api/projects/[projectId]/collaborators and DELETE /api/projects/[projectId]/collaborators/[collaboratorId] — owner-only mutations, Clerk Backend API enrichment of collaborator emails with display name and avatar. components/editor/share-dialog.tsx client component — project link copy with "Copied!" feedback, invite by email input (owner only), collaborator list with avatar/initials, remove button (owner only), collaborator read-only view. WorkspaceShell updated with isOwner prop and wired Share button. Build clean.
 
 ## In Progress
 
@@ -26,7 +28,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Feature 08 — next planned feature.
+- Feature 10 — next planned feature.
 
 ## Open Questions
 

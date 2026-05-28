@@ -1,6 +1,7 @@
 "use client"
 
 import { X, Plus, Pencil, Trash2 } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { useProjectDialogsContext } from "./project-dialogs-context"
@@ -11,11 +12,23 @@ interface ProjectSidebarProps {
   onClose: () => void
 }
 
-function ProjectListItem({ project }: { project: ProjectItem }) {
+function ProjectListItem({
+  project,
+  isActive,
+}: {
+  project: ProjectItem
+  isActive: boolean
+}) {
   const { openRename, openDelete } = useProjectDialogsContext()
+  const router = useRouter()
 
   return (
-    <div className="group flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-elevated cursor-pointer">
+    <div
+      className={`group flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-elevated cursor-pointer ${
+        isActive ? "bg-elevated" : ""
+      }`}
+      onClick={() => router.push(`/editor/${project.id}`)}
+    >
       <span className="text-sm text-copy-primary truncate">{project.name}</span>
       {project.isOwned && (
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -56,6 +69,8 @@ function ProjectListItem({ project }: { project: ProjectItem }) {
  */
 export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
   const { openCreate, ownedProjects, sharedProjects } = useProjectDialogsContext()
+  const pathname = usePathname()
+  const activeProjectId = pathname.match(/^\/editor\/([^/]+)/)?.[1]
 
   return (
     <aside
@@ -92,7 +107,11 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
             ) : (
               <div className="flex flex-col gap-0.5">
                 {ownedProjects.map((project) => (
-                  <ProjectListItem key={project.id} project={project} />
+                  <ProjectListItem
+                    key={project.id}
+                    project={project}
+                    isActive={project.id === activeProjectId}
+                  />
                 ))}
               </div>
             )}
@@ -104,7 +123,11 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
             ) : (
               <div className="flex flex-col gap-0.5">
                 {sharedProjects.map((project) => (
-                  <ProjectListItem key={project.id} project={project} />
+                  <ProjectListItem
+                    key={project.id}
+                    project={project}
+                    isActive={project.id === activeProjectId}
+                  />
                 ))}
               </div>
             )}
