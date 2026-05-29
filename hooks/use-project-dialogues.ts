@@ -24,6 +24,7 @@ export interface ProjectDialoguesValue {
   createSlug: string
   renameName: string
   isLoading: boolean
+  error: string | null
   openCreate: () => void
   openRename: (project: ProjectItem) => void
   openDelete: (project: ProjectItem) => void
@@ -31,6 +32,7 @@ export interface ProjectDialoguesValue {
   setCreateName: (name: string) => void
   setRenameName: (name: string) => void
   setIsLoading: (loading: boolean) => void
+  setError: (error: string | null) => void
 }
 
 export function useProjectDialogues(): ProjectDialoguesValue {
@@ -40,6 +42,7 @@ export function useProjectDialogues(): ProjectDialoguesValue {
   const [createSlug, setCreateSlug] = useState("")
   const [renameName, setRenameName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const suffixRef = useRef(randomSuffix())
 
   const setCreateName = (name: string) => {
@@ -70,6 +73,7 @@ export function useProjectDialogues(): ProjectDialoguesValue {
     setOpen(null)
     setTargetProject(null)
     setIsLoading(false)
+    setError(null)
   }
 
   return {
@@ -79,6 +83,7 @@ export function useProjectDialogues(): ProjectDialoguesValue {
     createSlug,
     renameName,
     isLoading,
+    error,
     openCreate,
     openRename,
     openDelete,
@@ -86,5 +91,6 @@ export function useProjectDialogues(): ProjectDialoguesValue {
     setCreateName,
     setRenameName,
     setIsLoading,
+    setError,
   }
 }

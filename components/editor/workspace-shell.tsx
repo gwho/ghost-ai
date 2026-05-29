@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Share2, Bot } from 'lucide-react'
 import type { Project } from '@/lib/generated/prisma'
 import { ShareDialog } from '@/components/editor/share-dialog'
+import { CanvasWrapper } from '@/components/editor/canvas-wrapper'
 
 interface WorkspaceShellProps {
   project: Pick<Project, 'id' | 'name'>
@@ -49,8 +50,8 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex items-center justify-center bg-base">
-          <p className="text-sm text-copy-muted">Canvas coming soon</p>
+        <div className="flex-1 overflow-hidden">
+          <CanvasWrapper roomId={project.id} />
         </div>
 
         {isAISidebarOpen && (

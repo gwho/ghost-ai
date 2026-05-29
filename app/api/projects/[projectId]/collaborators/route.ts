@@ -41,11 +41,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const clerkMap = await enrichWithClerk(rows.map((r) => r.email))
 
-  const result: CollaboratorItem[] = rows.map((r) => ({
-    id: r.id,
-    email: r.email,
-    ...clerkMap.get(r.email),
-  }))
+  const result: CollaboratorItem[] = rows.map((r) => {
+    const key = r.email.toLowerCase()
+    return { id: r.id, email: r.email, ...clerkMap.get(key) }
+  })
 
   return NextResponse.json(result)
 }
