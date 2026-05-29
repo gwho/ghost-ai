@@ -1,11 +1,14 @@
 "use client"
 
 import { createContext, useContext } from "react"
-import { useProjectActions, type ProjectActionsContextValue } from "@/hooks/use-project-actions"
+import { useProjectDialogues, type ProjectDialoguesValue } from "@/hooks/use-project-dialogues"
+import { useProjectActions, type ProjectActionsValue } from "@/hooks/use-project-actions"
 import { ProjectDialogs } from "./project-dialogs"
 import type { ProjectItem } from "@/lib/project-data"
 
-const ProjectDialogsContext = createContext<ProjectActionsContextValue | null>(null)
+export type ProjectContextValue = ProjectDialoguesValue & ProjectActionsValue
+
+const ProjectDialogsContext = createContext<ProjectContextValue | null>(null)
 
 interface ProjectDialogsProviderProps {
   children: React.ReactNode
@@ -18,17 +21,18 @@ export function ProjectDialogsProvider({
   initialOwned,
   initialShared,
 }: ProjectDialogsProviderProps) {
-  const actions = useProjectActions(initialOwned, initialShared)
+  const dialogues = useProjectDialogues()
+  const actions = useProjectActions(initialOwned, initialShared, dialogues)
 
   return (
-    <ProjectDialogsContext.Provider value={actions}>
+    <ProjectDialogsContext.Provider value={{ ...dialogues, ...actions }}>
       {children}
       <ProjectDialogs />
     </ProjectDialogsContext.Provider>
   )
 }
 
-export function useProjectDialogsContext(): ProjectActionsContextValue {
+export function useProjectDialogsContext(): ProjectContextValue {
   const ctx = useContext(ProjectDialogsContext)
   if (!ctx) throw new Error("useProjectDialogsContext must be used within ProjectDialogsProvider")
   return ctx

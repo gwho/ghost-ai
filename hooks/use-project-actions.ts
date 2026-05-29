@@ -1,96 +1,36 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import type { ProjectItem } from "@/lib/project-data"
+import type { ProjectDialoguesValue } from "./use-project-dialogues"
 
-export type DialogType = "create" | "rename" | "delete" | null
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/^-+|-+$/g, "")
-}
-
-function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 7)
-}
-
-export interface ProjectActionsContextValue {
-  open: DialogType
-  targetProject: ProjectItem | null
-  createName: string
-  createSlug: string
-  renameName: string
-  isLoading: boolean
-  openCreate: () => void
-  openRename: (project: ProjectItem) => void
-  openDelete: (project: ProjectItem) => void
-  closeDialog: () => void
-  handleCreate: () => void
-  handleRename: () => void
-  handleDelete: () => void
-  setCreateName: (name: string) => void
-  setRenameName: (name: string) => void
+export interface ProjectActionsValue {
   ownedProjects: ProjectItem[]
   sharedProjects: ProjectItem[]
+  handleCreate: () => Promise<void>
+  handleRename: () => Promise<void>
+  handleDelete: () => Promise<void>
 }
 
 export function useProjectActions(
   initialOwned: ProjectItem[],
-  initialShared: ProjectItem[]
-): ProjectActionsContextValue {
+  initialShared: ProjectItem[],
+  dialogues: ProjectDialoguesValue
+): ProjectActionsValue {
   const router = useRouter()
   const pathname = usePathname()
 
   const [ownedProjects, setOwnedProjects] = useState(initialOwned)
   const sharedProjects = initialShared
-  const [open, setOpen] = useState<DialogType>(null)
-  const [targetProject, setTargetProject] = useState<ProjectItem | null>(null)
-  const [createName, setCreateNameState] = useState("")
-  const [createSlug, setCreateSlug] = useState("")
-  const [renameName, setRenameName] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const suffixRef = useRef(randomSuffix())
 
-  // Re-sync when server re-fetches after router.refresh()
   const ownedKey = initialOwned.map((p) => `${p.id}:${p.name}`).join(",")
   useEffect(() => {
     setOwnedProjects(initialOwned)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownedKey])
 
-  const setCreateName = (name: string) => {
-    setCreateNameState(name)
-    const slug = toSlug(name)
-    setCreateSlug(slug ? `${slug}-${suffixRef.current}` : "")
-  }
-
-  const openCreate = () => {
-    suffixRef.current = randomSuffix()
-    setCreateNameState("")
-    setCreateSlug("")
-    setOpen("create")
-  }
-
-  const openRename = (project: ProjectItem) => {
-    setTargetProject(project)
-    setRenameName(project.name)
-    setOpen("rename")
-  }
-
-  const openDelete = (project: ProjectItem) => {
-    setTargetProject(project)
-    setOpen("delete")
-  }
-
-  const closeDialog = () => {
-    setOpen(null)
-    setTargetProject(null)
-    setIsLoading(false)
-  }
+  const { createName, renameName, targetProject, closeDialog, setIsLoading } = dialogues
 
   const handleCreate = async () => {
     if (!createName.trim()) return
@@ -151,22 +91,10 @@ export function useProjectActions(
   }
 
   return {
-    open,
-    targetProject,
-    createName,
-    createSlug,
-    renameName,
-    isLoading,
-    openCreate,
-    openRename,
-    openDelete,
-    closeDialog,
+    ownedProjects,
+    sharedProjects,
     handleCreate,
     handleRename,
     handleDelete,
-    setCreateName,
-    setRenameName,
-    ownedProjects,
-    sharedProjects,
   }
 }
