@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Share2, Bot } from 'lucide-react'
 import type { Project } from '@/lib/generated/prisma'
 import { ShareDialog } from '@/components/editor/share-dialog'
+import { CanvasWrapper } from '@/components/editor/canvas-wrapper'
+import { AICopilotSidebar } from '@/components/editor/ai-copilot-sidebar'
 
 interface WorkspaceShellProps {
   project: Pick<Project, 'id' | 'name'>
@@ -15,8 +17,14 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
   const [isShareOpen, setIsShareOpen] = useState(false)
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="h-14 flex-none flex items-center justify-between px-4 border-b border-surface-border bg-surface">
+    <div className="relative h-full">
+      {/* Canvas fills the entire area — sidebars and toolbar float over it */}
+      <div className="absolute inset-0">
+        <CanvasWrapper roomId={project.id} />
+      </div>
+
+      {/* Workspace toolbar floats over the top of the canvas */}
+      <div className="absolute top-0 left-0 right-0 z-20 h-12 flex items-center justify-between px-4 border-b border-surface-border bg-surface">
         <span className="text-sm font-semibold text-copy-primary truncate">{project.name}</span>
         <div className="flex items-center gap-1">
           <button
@@ -40,6 +48,13 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
         </div>
       </div>
 
+      {/* AI sidebar floats over the right side of the canvas, below the toolbar */}
+      {isAISidebarOpen && (
+        <div className="absolute right-0 top-12 bottom-0 z-10 w-80">
+          <AICopilotSidebar />
+        </div>
+      )}
+
       <ShareDialog
         projectId={project.id}
         projectName={project.name}
@@ -47,18 +62,6 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
         open={isShareOpen}
         onOpenChange={setIsShareOpen}
       />
-
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex items-center justify-center bg-base">
-          <p className="text-sm text-copy-muted">Canvas coming soon</p>
-        </div>
-
-        {isAISidebarOpen && (
-          <aside className="w-80 flex-none border-l border-surface-border bg-surface flex items-center justify-center">
-            <p className="text-sm text-copy-muted">AI chat coming soon</p>
-          </aside>
-        )}
-      </div>
     </div>
   )
 }

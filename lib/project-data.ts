@@ -15,7 +15,10 @@ export async function getEditorProjects(): Promise<{
   if (!userId) return { owned: [], shared: [] }
 
   const user = await currentUser()
-  const email = user?.emailAddresses[0]?.emailAddress
+  const primaryAddr = user?.emailAddresses.find(
+    (ea) => ea.id === user.primaryEmailAddressId,
+  )
+  const email = (primaryAddr ?? user?.emailAddresses[0])?.emailAddress?.toLowerCase()
 
   const [ownedRaw, sharedRaw] = await Promise.all([
     prisma.project.findMany({

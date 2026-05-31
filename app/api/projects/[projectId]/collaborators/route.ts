@@ -23,7 +23,7 @@ async function enrichWithClerk(emails: string[]): Promise<Map<string, { name?: s
     const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || undefined
     const avatarUrl = u.imageUrl || undefined
     for (const ea of u.emailAddresses) {
-      map.set(ea.emailAddress, { name, avatarUrl })
+      map.set(ea.emailAddress.toLowerCase(), { name, avatarUrl })
     }
   }
   return map
@@ -41,11 +41,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const clerkMap = await enrichWithClerk(rows.map((r) => r.email))
 
-  const result: CollaboratorItem[] = rows.map((r) => ({
-    id: r.id,
-    email: r.email,
-    ...clerkMap.get(r.email),
-  }))
+  const result: CollaboratorItem[] = rows.map((r) => {
+    const key = r.email.toLowerCase()
+    return { id: r.id, email: r.email, ...clerkMap.get(key) }
+  })
 
   return NextResponse.json(result)
 }

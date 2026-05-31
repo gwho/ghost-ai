@@ -69,7 +69,7 @@ something stops the chain.
 `e.stopPropagation()` breaks that chain at the element where it's called. In
 this pattern:
 
-```
+```tsx
 <div onClick={navigateToProject}>       ← fires last (parent)
   <button onClick={(e) => {
     e.stopPropagation()                 ← stops the event here

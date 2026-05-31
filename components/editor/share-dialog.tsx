@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -11,13 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-
-interface CollaboratorItem {
-  id: string
-  email: string
-  name?: string
-  avatarUrl?: string
-}
+import { useProjectShare, type CollaboratorItem } from '@/hooks/use-project-share'
 
 interface ShareDialogProps {
   projectId: string
@@ -31,25 +24,6 @@ function initials(str: string): string {
   const parts = str.split(/[\s@]+/).filter(Boolean)
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
   return str.slice(0, 2).toUpperCase()
-}
-
-function copyWithTextarea(url: string): boolean {
-  const textarea = document.createElement('textarea')
-  textarea.value = url
-  textarea.setAttribute('readonly', '')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.select()
-  textarea.setSelectionRange(0, url.length)
-
-  try {
-    return document.execCommand('copy')
-  } catch {
-    return false
-  } finally {
-    document.body.removeChild(textarea)
-  }
 }
 
 function CollaboratorAvatar({
@@ -85,92 +59,18 @@ export function ShareDialog({
   open,
   onOpenChange,
 }: ShareDialogProps) {
-  const [collaborators, setCollaborators] = useState<CollaboratorItem[]>([])
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (copyTimer.current) clearTimeout(copyTimer.current)
-      copyTimer.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    setIsLoading(true)
-    fetch(`/api/projects/${projectId}/collaborators`)
-      .then((r) => r.json())
-      .then((data: CollaboratorItem[]) => {
-        setCollaborators(data)
-        setIsLoading(false)
-      })
-      .catch(() => setIsLoading(false))
-  }, [open, projectId])
-
-  async function handleCopy() {
-    const url = `${window.location.origin}/editor/${projectId}`
-    if (copyTimer.current) clearTimeout(copyTimer.current)
-    copyTimer.current = null
-
-    let didCopy = false
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url)
-        didCopy = true
-      } else {
-        didCopy = copyWithTextarea(url)
-      }
-    } catch {
-      didCopy = copyWithTextarea(url)
-    }
-
-    if (didCopy) {
-      setIsCopied(true)
-      copyTimer.current = setTimeout(() => {
-        setIsCopied(false)
-        copyTimer.current = null
-      }, 2000)
-      return
-    }
-
-    setIsCopied(false)
-    window.prompt('Copy this project URL:', url)
-  }
-
-  async function handleInvite() {
-    const email = inviteEmail.trim()
-    if (!email) return
-    setError(null)
-    setIsLoading(true)
-    const res = await fetch(`/api/projects/${projectId}/collaborators`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    })
-    if (res.ok) {
-      const newCollab: CollaboratorItem = await res.json()
-      setCollaborators((prev) => [...prev, newCollab])
-      setInviteEmail('')
-    } else {
-      const data = await res.json().catch(() => ({}))
-      setError((data as { error?: string }).error ?? 'Failed to invite collaborator')
-    }
-    setIsLoading(false)
-  }
-
-  async function handleRemove(collaboratorId: string) {
-    const res = await fetch(
-      `/api/projects/${projectId}/collaborators/${collaboratorId}`,
-      { method: 'DELETE' },
-    )
-    if (res.ok) {
-      setCollaborators((prev) => prev.filter((c) => c.id !== collaboratorId))
-    }
-  }
+  const {
+    collaborators,
+    inviteEmail,
+    isCopied,
+    isLoading,
+    error,
+    setInviteEmail,
+    setError,
+    handleCopy,
+    handleInvite,
+    handleRemove,
+  } = useProjectShare(projectId, open)
 
   const projectUrl =
     typeof window !== 'undefined'
@@ -237,7 +137,7 @@ export function ShareDialog({
             <p className="text-xs text-copy-muted font-medium uppercase tracking-wide">
               Collaborators
             </p>
-            {collaborators.map((c) => (
+            {collaborators.map((c: CollaboratorItem) => (
               <div key={c.id} className="flex items-center gap-3">
                 <CollaboratorAvatar name={c.name} email={c.email} avatarUrl={c.avatarUrl} />
                 <span className="flex-1 text-sm text-copy-primary truncate">
