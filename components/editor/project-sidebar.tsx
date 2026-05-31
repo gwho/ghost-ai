@@ -33,7 +33,7 @@ function ProjectListItem({
         className="absolute inset-0 rounded-xl"
         aria-label={project.name}
       />
-      <span className="relative text-sm text-copy-primary truncate">{project.name}</span>
+      <span className="relative pointer-events-none text-sm text-copy-primary truncate">{project.name}</span>
       {project.isOwned && (
         <div className="relative flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
