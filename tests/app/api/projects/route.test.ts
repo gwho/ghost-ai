@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const authMock = vi.fn()
-const findManyMock = vi.fn()
-const createMock = vi.fn()
+const { authMock, findManyMock, createMock } = vi.hoisted(() => ({
+  authMock: vi.fn(),
+  findManyMock: vi.fn(),
+  createMock: vi.fn(),
+}))
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: authMock,

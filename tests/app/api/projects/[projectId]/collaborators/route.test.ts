@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const getProjectAccessMock = vi.fn()
-const getCurrentIdentityMock = vi.fn()
-const findManyMock = vi.fn()
-const findUniqueMock = vi.fn()
-const createMock = vi.fn()
-const clerkClientMock = vi.fn()
-const getUserListMock = vi.fn()
+const {
+  getProjectAccessMock,
+  getCurrentIdentityMock,
+  findManyMock,
+  findUniqueMock,
+  createMock,
+  clerkClientMock,
+  getUserListMock,
+} = vi.hoisted(() => ({
+  getProjectAccessMock: vi.fn(),
+  getCurrentIdentityMock: vi.fn(),
+  findManyMock: vi.fn(),
+  findUniqueMock: vi.fn(),
+  createMock: vi.fn(),
+  clerkClientMock: vi.fn(),
+  getUserListMock: vi.fn(),
+}))
 
 vi.mock('@/lib/project-access', () => ({
   getProjectAccess: getProjectAccessMock,

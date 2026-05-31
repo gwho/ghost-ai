@@ -9,6 +9,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['lib/**/*.ts', 'app/api/**/*.ts'],
+      exclude: ['lib/generated/**'],
     },
   },
   resolve: {
