@@ -9,13 +9,14 @@ export async function POST(request: NextRequest) {
     let room: string | undefined
     try {
       const body = await request.json()
-      room = body?.room
+      room = typeof body?.room === 'string' ? body.room : undefined
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     if (!room) {
-      return NextResponse.json({ error: 'Missing room' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing or invalid room' }, { status: 400 })
+    }
     }
 
     const access = await getProjectAccess(room)
