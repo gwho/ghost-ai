@@ -48,6 +48,9 @@ export function useProjectShare(projectId: string, open: boolean): ProjectShareV
   const [isCopied, setIsCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Tracks the AbortController for the most recent collaborator fetch so we
+  // can cancel it when the effect re-runs or reloadCollaborators is called again.
+  const latestFetchRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     return () => {
@@ -56,25 +59,29 @@ export function useProjectShare(projectId: string, open: boolean): ProjectShareV
     }
   }, [])
 
-  async function fetchCollaborators(): Promise<CollaboratorItem[]> {
-    const res = await fetch(`/api/projects/${projectId}/collaborators`)
+  async function fetchCollaborators(signal?: AbortSignal): Promise<CollaboratorItem[]> {
+    const res = await fetch(`/api/projects/${projectId}/collaborators`, { signal })
     if (!res.ok) throw new Error("Failed to load collaborators")
     return res.json()
   }
 
   useEffect(() => {
     if (!open) return
+    const controller = new AbortController()
+    latestFetchRef.current = controller
     void (async () => {
       setError(null)
       setIsLoading(true)
       try {
-        setCollaborators(await fetchCollaborators())
-      } catch {
+        setCollaborators(await fetchCollaborators(controller.signal))
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return
         setError("Failed to load collaborators")
       } finally {
-        setIsLoading(false)
+        if (!controller.signal.aborted) setIsLoading(false)
       }
     })()
+    return () => { controller.abort() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, projectId])
 
@@ -113,41 +120,56 @@ export function useProjectShare(projectId: string, open: boolean): ProjectShareV
     if (!email) return
     setError(null)
     setIsLoading(true)
-    const res = await fetch(`/api/projects/${projectId}/collaborators`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    })
-    if (res.ok) {
-      const newCollab: CollaboratorItem = await res.json()
-      setCollaborators((prev) => [...prev, newCollab])
-      setInviteEmail("")
-    } else {
-      const data = await res.json().catch(() => ({}))
-      setError((data as { error?: string }).error ?? "Failed to invite collaborator")
+    try {
+      const res = await fetch(`/api/projects/${projectId}/collaborators`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (res.ok) {
+        const newCollab: CollaboratorItem = await res.json()
+        setCollaborators((prev) => [...prev, newCollab])
+        setInviteEmail("")
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setError((data as { error?: string }).error ?? "Failed to invite collaborator")
+      }
+    } catch {
+      setError("Failed to invite collaborator")
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   async function handleRemove(collaboratorId: string) {
-    const res = await fetch(
-      `/api/projects/${projectId}/collaborators/${collaboratorId}`,
-      { method: "DELETE" }
-    )
-    if (res.ok) {
-      setCollaborators((prev) => prev.filter((c) => c.id !== collaboratorId))
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/collaborators/${collaboratorId}`,
+        { method: "DELETE" }
+      )
+      if (res.ok) {
+        setCollaborators((prev) => prev.filter((c) => c.id !== collaboratorId))
+      } else {
+        setError("Failed to remove collaborator")
+      }
+    } catch {
+      setError("Failed to remove collaborator")
     }
   }
 
   async function reloadCollaborators() {
+    latestFetchRef.current?.abort()
+    const controller = new AbortController()
+    latestFetchRef.current = controller
     setError(null)
     setIsLoading(true)
     try {
-      setCollaborators(await fetchCollaborators())
-    } catch {
+      setCollaborators(await fetchCollaborators(controller.signal))
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return
       setError("Failed to load collaborators")
     } finally {
-      setIsLoading(false)
+      if (!controller.signal.aborted) setIsLoading(false)
     }
   }
 

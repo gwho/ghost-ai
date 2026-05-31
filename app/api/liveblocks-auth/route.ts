@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
     try {
       await lb.getOrCreateRoom(room, { defaultAccesses: [] })
     } catch (error) {
-      if (!(error instanceof LiveblocksError)) throw error
+      if (error instanceof LiveblocksError) {
+        return new Response(JSON.stringify({ error: error.message }), { status: error.status })
+      }
+      throw error
     }
 
     const name =

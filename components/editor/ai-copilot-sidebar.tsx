@@ -51,7 +51,7 @@ function FutureHooksCard() {
       <div className="flex flex-col gap-2.5">
         {hooks.map((hook) => (
           <div key={hook.label} className="flex items-start gap-2.5">
-            <div className="flex-none h-7 w-7 rounded-lg bg-surface flex items-center justify-center mt-0.5">
+            <div className="flex-none h-7 w-7 rounded-xl bg-surface flex items-center justify-center mt-0.5">
               <hook.icon className="h-3.5 w-3.5 text-copy-muted" />
             </div>
             <div className="min-w-0">
@@ -77,7 +77,7 @@ export function AICopilotSidebar() {
         </div>
         <button
           type="button"
-          className="h-7 w-7 rounded-lg flex items-center justify-center text-copy-muted hover:text-copy-primary hover:bg-elevated transition-colors"
+          className="h-7 w-7 rounded-xl flex items-center justify-center text-copy-muted hover:text-copy-primary hover:bg-elevated transition-colors"
           aria-label="Copilot settings"
         >
           <Settings className="h-3.5 w-3.5" />
@@ -102,7 +102,7 @@ export function AICopilotSidebar() {
           <button
             type="button"
             disabled
-            className="flex-none h-7 w-7 rounded-lg flex items-center justify-center text-copy-muted disabled:opacity-30"
+            className="flex-none h-7 w-7 rounded-xl flex items-center justify-center text-copy-muted disabled:opacity-30"
             aria-label="Send message"
           >
             <Send className="h-3.5 w-3.5" />
