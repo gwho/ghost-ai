@@ -14,7 +14,7 @@ import {
   type NodeTypes,
 } from '@xyflow/react'
 import { useLiveblocksFlow } from '@liveblocks/react-flow'
-import type { CanvasNode, CanvasEdge } from '@/types/canvas'
+import type { CanvasNode, CanvasEdge, NodeShape } from '@/types/canvas'
 import { NODE_COLORS } from '@/types/canvas'
 import { CanvasNodeComponent } from '@/components/editor/canvas-node'
 import { ShapePanel } from '@/components/editor/shape-panel'
@@ -61,11 +61,20 @@ function CanvasFlowInner() {
       const raw = e.dataTransfer.getData('application/ghost-shape')
       if (!raw) return
 
-      const { shape, width, height } = JSON.parse(raw) as {
-        shape: string
-        width: number
-        height: number
+      let shape: string, width: number, height: number
+      try {
+        const parsed = JSON.parse(raw)
+        shape = parsed?.shape
+        width = parsed?.width
+        height = parsed?.height
+      } catch {
+        return
       }
+      if (
+        typeof shape !== 'string' || !shape ||
+        typeof width !== 'number' || !Number.isFinite(width) || width <= 0 ||
+        typeof height !== 'number' || !Number.isFinite(height) || height <= 0
+      ) return
 
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       counter.current += 1
@@ -80,6 +89,28 @@ function CanvasFlowInner() {
         height,
       }
 
+      onNodesChange([{ type: 'add', item: newNode }])
+    },
+    [screenToFlowPosition, onNodesChange],
+  )
+
+  const onCreateShape = useCallback(
+    (shape: NodeShape, width: number, height: number) => {
+      // Place keyboard-created nodes at the viewport centre in canvas coordinates.
+      const position = screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      })
+      counter.current += 1
+      const id = `${shape}-${Date.now()}-${counter.current}`
+      const newNode: CanvasNode = {
+        id,
+        type: 'canvasNode',
+        position,
+        data: { label: '', color: NODE_COLORS[0].fill, shape },
+        width,
+        height,
+      }
       onNodesChange([{ type: 'add', item: newNode }])
     },
     [screenToFlowPosition, onNodesChange],
@@ -114,7 +145,7 @@ function CanvasFlowInner() {
         <Background variant={BackgroundVariant.Dots} />
         <MiniMap />
       </ReactFlow>
-      <ShapePanel />
+      <ShapePanel onCreateShape={onCreateShape} />
     </div>
   )
 }

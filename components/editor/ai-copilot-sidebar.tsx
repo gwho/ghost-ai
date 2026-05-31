@@ -5,7 +5,7 @@ import { Settings, MessageCircle, Send, Sparkles, Workflow, BookOpen } from 'luc
 
 function ChatPendingCard() {
   return (
-    <div className="rounded-xl border border-surface-border bg-elevated p-4">
+    <div className="rounded-2xl border border-surface-border bg-elevated p-4">
       <div className="flex items-start gap-3">
         <div className="flex-none h-9 w-9 rounded-full bg-accent/20 flex items-center justify-center">
           <MessageCircle className="h-4 w-4 text-accent" />
@@ -41,7 +41,7 @@ function FutureHooksCard() {
   ]
 
   return (
-    <div className="rounded-xl border border-surface-border bg-elevated p-4">
+    <div className="rounded-2xl border border-surface-border bg-elevated p-4">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-copy-muted mb-3">
         Future Hooks
       </p>

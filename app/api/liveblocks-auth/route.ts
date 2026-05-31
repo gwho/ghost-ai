@@ -6,7 +6,13 @@ import { getLiveblocksClient, getCursorColor } from '@/lib/liveblocks'
 
 export async function POST(request: NextRequest) {
   try {
-    const { room } = await request.json()
+    let room: string | undefined
+    try {
+      const body = await request.json()
+      room = body?.room
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
 
     if (!room) {
       return NextResponse.json({ error: 'Missing room' }, { status: 400 })

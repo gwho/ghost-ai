@@ -1,0 +1,26 @@
+---
+description: Document bug fixes in beginner-friendly fix logs
+alwaysApply: true
+---
+
+# Document Fixes
+
+When fixing bugs or addressing reported findings in this project:
+
+- Verify each finding against current code before editing.
+- Fix only findings that are still valid.
+- Skip invalid or already-fixed findings with a brief reason in the final response.
+- Keep code changes minimal and scoped to the verified issue.
+- Validate the changed files with IDE diagnostics and the smallest useful lint/build command.
+- Add or update a Markdown fix log in `docs/fixes/`.
+
+Fix logs should explain the work for learning purposes:
+
+- What was wrong: symptom, affected file, and why the current code failed.
+- How it was fixed: focused before/after snippets or exact class/API changes.
+- Why this fix was chosen: design-system rule, runtime behavior, or trade-off.
+- Beginner mental model: explain the underlying concept in plain language.
+- Validation: commands/checks run and their result.
+- Files changed: concise summary table.
+
+Prefer filenames like `docs/fixes/fix-<short-kebab-description>.md`.
