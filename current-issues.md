@@ -1,25 +1,42 @@
-```markdown
-# Current Issue: Centralized Hook Logic
+Review the editor canvas implementation and fix the visual issues. The canvas currently looks like it's floating above the background inside a border box, instead of feeling like a real design canvas. Check `/context/screenshots/image.png` for the current broken state.
 
-**Location:**
-Read the `hooks/use-project-actions.ts` file.
+Read the current canvas component code in `components/editor`
 
-**Original Context:**
-Please read the **`context/feature-specs/09-share-dialogue.md`** spec file to understand the original architectural requirements for the share dialogue and copying functionalities.
+Issues to look for and document:
 
-**The Problem:**
-Currently, all project-related hook logic is centralized inside a single `use-project-actions.ts` file. This violates the separation of concerns established in the project architecture. The logic needs to be split into distinct, specialized hooks to manage different parts of the application state.
+DRAG AND DROP ISSUES:
 
-**Technical Hints & Required Structure:**
-Please refactor the existing logic into the following specific files:
+- Canvas nodes from the node panel cannot be dragged and dropped onto the canvas. Investigate and fix the full drag-and-drop pipeline:
+- Confirm that draggable nodes in the node panel have the correct draggable attribute and onDragStart handler that sets the node type in dataTransfer
+- Confirm that the canvas has onDragOver (with preventDefault to allow dropping) and onDrop handlers wired up correctly
+- Ensure the drop handler reads the node type from dataTransfer, calculates the correct canvas coordinates accounting for pan offset and zoom scale, and creates a new node at the dropped position
+- Check that no parent element is intercepting or blocking the drag events before they reach the canvas
 
-1. `use-project-dialogues.ts`: This hook should centralize and manage the UI state for the dialogues (create, rename, and delete). It must handle the form state (such as the project name and the live slug preview), track the active dialogue type, and manage the loading state.
-2. `use-project-actions.ts`: This hook should be focused entirely on managing project mutations and data logic. It should handle generating a short unique suffix, slugifying the name, calling the backend API routes (POST, PATCH, DELETE) to update the database, navigating to the new workspace upon creation, and aligning the project ID with the Liveblocks room ID.
-3. `use-project-share.ts`: (If sharing logic has been implemented) This hook is responsible for the share dialogue actions. It handles copying the project URL to the clipboard (ensuring the `await navigator.clipboard` call is wrapped in a `try...catch` block to properly handle permission failures) and reloading collaborator data.
+CANVAS VISUAL ISSUES:
 
-**Success Criteria:**
-Success means the `hooks` folder contains separate, strictly typed files that each handle only their specific domain, ensuring that API calls, UI dialogue state, and sharing functionalities are not tangled together.
+- Box shadow or elevation styles making the canvas appear to float
+- Border or border-radius giving it a "card" appearance instead of a canvas feel
+- Background color mismatch between canvas and its container
+- Missing or incorrect dotted background pattern on the canvas
+- z-index or positioning (absolute/relative) causing the floating effect
+- Padding/margin around the canvas creating separation from the background
+- Any wrapper div styles (like rounded corners, shadows, or elevated backgrounds) treating the canvas as a UI card
 
-**Action:**
-Explore this file and deeply analyze the problem. Only when you have the analysis, give it back to me with your reasoning and idea of how you plan to separate the logic into these files. Wait for my green light to execute it.
-```
+SIDEBAR ISSUES:
+
+- The left and right sidebars should float OVER the canvas, not push or shrink it
+- Sidebars must use position: fixed or position: absolute with a higher z-index so the canvas extends fully behind them
+- The canvas background (dotted pattern) should be visible edge-to-edge underneath both sidebars
+- Sidebars should have a semi-transparent or solid background with a subtle shadow so they feel elevated above the canvas, not embedded in the layout
+- The left sidebar is not fully hiding when toggled off
+
+— it is partially visible or peeking out instead of sliding completely off-screen. When closed, the sidebar should translate fully outside the viewport with no visible remnant. Check for incorrect transform: translateX values, insufficient negative offset, overflow issues on the parent container, or missing overflow: hidden that is causing the sidebar to remain partially visible during or after the close transition.
+
+After documenting all issues fix all of the above so that:
+
+1. The canvas has a dotted background pattern filling the full viewport naturally
+2. The canvas feels flush with the surrounding background — no floating, no card effect
+3. Box-shadow, excessive borders, and elevated styling are removed from the canvas
+4. The canvas looks and feels like an infinite design canvas (similar to Figma or Excalidraw)
+5. Both sidebars float over the canvas and are fully hidden when toggled off
+6. Nodes can be dragged from the node panel and dropped onto the canvas correctly

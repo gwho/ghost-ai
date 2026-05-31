@@ -56,23 +56,26 @@ export function useProjectShare(projectId: string, open: boolean): ProjectShareV
     }
   }, [])
 
+  async function fetchCollaborators(): Promise<CollaboratorItem[]> {
+    const res = await fetch(`/api/projects/${projectId}/collaborators`)
+    if (!res.ok) throw new Error("Failed to load collaborators")
+    return res.json()
+  }
+
   useEffect(() => {
     if (!open) return
-    setError(null)
-    setIsLoading(true)
-    fetch(`/api/projects/${projectId}/collaborators`)
-      .then((r) => {
-        if (!r.ok) throw new Error()
-        return r.json()
-      })
-      .then((data: CollaboratorItem[]) => {
-        setCollaborators(data)
-        setIsLoading(false)
-      })
-      .catch(() => {
+    void (async () => {
+      setError(null)
+      setIsLoading(true)
+      try {
+        setCollaborators(await fetchCollaborators())
+      } catch {
         setError("Failed to load collaborators")
+      } finally {
         setIsLoading(false)
-      })
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, projectId])
 
   async function handleCopy() {
@@ -137,20 +140,15 @@ export function useProjectShare(projectId: string, open: boolean): ProjectShareV
   }
 
   async function reloadCollaborators() {
+    setError(null)
     setIsLoading(true)
-    fetch(`/api/projects/${projectId}/collaborators`)
-      .then((r) => {
-        if (!r.ok) throw new Error()
-        return r.json()
-      })
-      .then((data: CollaboratorItem[]) => {
-        setCollaborators(data)
-        setIsLoading(false)
-      })
-      .catch(() => {
-        setError("Failed to load collaborators")
-        setIsLoading(false)
-      })
+    try {
+      setCollaborators(await fetchCollaborators())
+    } catch {
+      setError("Failed to load collaborators")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return {

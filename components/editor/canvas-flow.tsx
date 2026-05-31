@@ -2,42 +2,119 @@
 
 import '@xyflow/react/dist/style.css'
 
+import { useCallback, useRef } from 'react'
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   BackgroundVariant,
   MiniMap,
   ConnectionMode,
+  useReactFlow,
+  type NodeTypes,
 } from '@xyflow/react'
 import { useLiveblocksFlow } from '@liveblocks/react-flow'
 import type { CanvasNode, CanvasEdge } from '@/types/canvas'
+import { NODE_COLORS } from '@/types/canvas'
+import { CanvasNodeComponent } from '@/components/editor/canvas-node'
+import { ShapePanel } from '@/components/editor/shape-panel'
+
+const nodeTypes: NodeTypes = {
+  canvasNode: CanvasNodeComponent,
+}
 
 export function CanvasFlow() {
+  return (
+    <ReactFlowProvider>
+      <CanvasFlowInner />
+    </ReactFlowProvider>
+  )
+}
+
+function CanvasFlowInner() {
   const {
-    nodes: rawNodes,
-    edges: rawEdges,
+    nodes,
+    edges,
     onNodesChange,
     onEdgesChange,
     onConnect,
     onDelete,
   } = useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })
 
-  const nodes = rawNodes ?? []
-  const edges = rawEdges ?? []
+  const { screenToFlowPosition } = useReactFlow()
+  const counter = useRef(0)
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    // Must match effectAllowed='copy' set in ShapePanel's onDragStart.
+    // A mismatch (e.g. 'move') causes browsers to set dropEffect='none'
+    // and suppress the drop event entirely.
+    e.dataTransfer.dropEffect = 'copy'
+  }, [])
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      // stopPropagation prevents this handler firing twice — both the wrapper
+      // div and <ReactFlow> have onDrop for belt-and-suspenders reliability.
+      e.stopPropagation()
+      const raw = e.dataTransfer.getData('application/ghost-shape')
+      if (!raw) return
+
+      const { shape, width, height } = JSON.parse(raw) as {
+        shape: string
+        width: number
+        height: number
+      }
+
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      counter.current += 1
+      const id = `${shape}-${Date.now()}-${counter.current}`
+
+      const newNode: CanvasNode = {
+        id,
+        type: 'canvasNode',
+        position,
+        data: { label: '', color: NODE_COLORS[0].fill, shape },
+        width,
+        height,
+      }
+
+      onNodesChange([{ type: 'add', item: newNode }])
+    },
+    [screenToFlowPosition, onNodesChange],
+  )
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      onDelete={onDelete}
-      connectionMode={ConnectionMode.Loose}
-      fitView
+    // Handlers sit on both the wrapper div and <ReactFlow> so the drop is
+    // caught regardless of which layer the browser fires the event on first.
+    <div
+      className="w-full h-full relative"
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
-      <Background variant={BackgroundVariant.Dots} />
-      <MiniMap />
-    </ReactFlow>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onDelete={onDelete}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        nodeTypes={nodeTypes}
+        connectionMode={ConnectionMode.Loose}
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          style: { strokeWidth: 1.5, stroke: 'var(--border-subtle)' },
+        }}
+        style={{ background: 'transparent' }}
+        fitView
+      >
+        <Background variant={BackgroundVariant.Dots} />
+        <MiniMap />
+      </ReactFlow>
+      <ShapePanel />
+    </div>
   )
 }

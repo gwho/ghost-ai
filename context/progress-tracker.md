@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 11 — Base Canvas (complete)
+- Feature 12 — Shape Panel (complete)
 
 ## Current Goal
 
-- Feature 12 — next planned feature.
+- Feature 13 — next planned feature.
 
 ## Completed
 
@@ -23,6 +23,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - 09-share-dialog: REST endpoints GET/POST /api/projects/[projectId]/collaborators and DELETE /api/projects/[projectId]/collaborators/[collaboratorId] — owner-only mutations, Clerk Backend API enrichment of collaborator emails with display name and avatar. components/editor/share-dialog.tsx client component — project link copy with "Copied!" feedback, invite by email input (owner only), collaborator list with avatar/initials, remove button (owner only), collaborator read-only view. WorkspaceShell updated with isOwner prop and wired Share button. Build clean.
 - 10-liveblocks-setup: liveblocks.config.ts typed with Presence (cursor x/y + isThinking) and UserMeta (name, avatar, color). lib/liveblocks.ts — lazy-initialized cached @liveblocks/node client (getLiveblocksClient()) + getCursorColor() helper that deterministically maps a user ID to one of 10 palette colors via djb2 hash. POST /api/liveblocks-auth — requires Clerk auth, verifies project membership via getProjectAccess(), calls getOrCreateRoom() to ensure the room exists, returns a prepareSession token with name/avatar/color attached. Returns 403 for unauthorized access. @liveblocks/node installed. Build clean.
 - 11-base-canvas: types/canvas.ts with NodeData (label, color, shape), CanvasNode, CanvasEdge types, NODE_COLORS (8 dark fill/text pairs), and NODE_SHAPES (rectangle, diamond, circle, pill, cylinder, hexagon). components/editor/canvas-flow.tsx — client component using useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true }) with ReactFlow, dot-pattern Background, MiniMap, and ConnectionMode.Loose. components/editor/canvas-wrapper.tsx — LiveblocksErrorBoundary (class component) wrapping LiveblocksProvider + RoomProvider (initialPresence cursor: null) + ClientSideSuspense. workspace-shell.tsx updated to render CanvasWrapper instead of the canvas placeholder. Build clean.
+- 12-shape-panel: components/editor/shape-panel.tsx — floating pill toolbar at bottom-center of canvas with 6 draggable shape buttons (rectangle, diamond, circle, pill, cylinder, hexagon) using Lucide icons; onDragStart sets application/ghost-shape dataTransfer payload with shape name and default dimensions. components/editor/canvas-node.tsx — custom node renderer registered as nodeTypes.canvasNode; renders every shape as a bordered rectangle with label centered and 4 Handle connection points; applies fill/text color from NODE_COLORS. canvas-flow.tsx refactored — split into CanvasFlow (outer, adds ReactFlowProvider) and CanvasFlowInner (inner, uses both useLiveblocksFlow and useReactFlow); onDragOver + onDrop handlers on wrapper div convert screen position to canvas coordinates via screenToFlowPosition and call onNodesChange([{ type: 'add', item }]); node IDs use shape-timestamp-counter format. Build clean.
 - refactor-hook-separation: Extracted `use-project-actions.ts` monolith into three focused hooks — `hooks/use-project-dialogues.ts` (dialog UI state, slug preview), `hooks/use-project-actions.ts` (project mutations, API calls, navigation only), and `hooks/use-project-share.ts` (clipboard copy, collaborator CRUD). Share dialog logic moved from inline in `share-dialog.tsx` into the new share hook. `project-dialogs-context.tsx` composes both hooks and spreads into the same context shape — no consumer changes. Build clean. Doc at `docs/refactors/refactor-hook-separation.md`.
 
 ## In Progress
@@ -31,7 +32,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Feature 12 — next planned feature.
+- Feature 13 — next planned feature.
 
 ## Open Questions
 

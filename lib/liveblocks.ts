@@ -29,7 +29,15 @@ declare global {
 
 export function getLiveblocksClient(): Liveblocks {
   if (globalThis._liveblocks) return globalThis._liveblocks
-  const client = new Liveblocks({ secret: process.env.LIVEBLOCKS_SECRET_KEY! })
+
+  const secret = process.env.LIVEBLOCKS_SECRET_KEY
+  if (!secret) {
+    throw new Error(
+      'LIVEBLOCKS_SECRET_KEY is not set. Add it to .env.local to enable real-time collaboration.',
+    )
+  }
+
+  const client = new Liveblocks({ secret })
   if (process.env.NODE_ENV !== 'production') globalThis._liveblocks = client
   return client
 }
