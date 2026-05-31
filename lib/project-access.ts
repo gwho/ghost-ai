@@ -11,10 +11,11 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
   const { userId } = await auth()
   if (!userId) return null
   const user = await currentUser()
-  const primaryEmail = user?.emailAddresses.find(
+  const primaryAddr = user?.emailAddresses.find(
     (ea) => ea.id === user.primaryEmailAddressId,
-  )?.emailAddress?.toLowerCase()
-  return { userId, email: primaryEmail }
+  )
+  const email = (primaryAddr ?? user?.emailAddresses[0])?.emailAddress?.toLowerCase()
+  return { userId, email }
 }
 
 export async function getProjectAccess(
@@ -34,7 +35,7 @@ export async function getProjectAccess(
 
   const isOwner = project.ownerId === userId
   const isCollaborator = email
-    ? project.collaborators.some((c) => c.email === email)
+    ? project.collaborators.some((c) => c.email?.toLowerCase() === email)
     : false
 
   if (!isOwner && !isCollaborator) return null

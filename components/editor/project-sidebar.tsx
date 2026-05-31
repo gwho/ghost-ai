@@ -72,8 +72,8 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
 
   return (
     <aside
-      className={`fixed top-14 left-0 z-40 h-[calc(100vh-3.5rem)] w-72 flex flex-col bg-surface border-r border-surface-border transition-transform duration-300 ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
+      className={`fixed top-14 left-0 z-40 h-[calc(100vh-3.5rem)] w-72 flex flex-col overflow-hidden bg-surface border-r border-surface-border transition-transform duration-300 ${
+        isOpen ? "translate-x-0" : "-translate-x-[calc(100%+2px)]"
       }`}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">

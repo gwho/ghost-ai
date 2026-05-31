@@ -18,6 +18,7 @@ function CreateProjectDialog() {
     createName,
     createSlug,
     isLoading,
+    error,
     setCreateName,
     handleCreate,
     closeDialog,
@@ -47,6 +48,7 @@ function CreateProjectDialog() {
           <p className="font-mono text-xs text-copy-muted">
             ghost.ai/{createSlug || "…"}
           </p>
+          {open === "create" && error && <p className="text-sm text-error">{error}</p>}
         </div>
 
         <DialogFooter>
@@ -68,6 +70,7 @@ function RenameProjectDialog() {
     targetProject,
     renameName,
     isLoading,
+    error,
     setRenameName,
     handleRename,
     closeDialog,
@@ -85,7 +88,7 @@ function RenameProjectDialog() {
           )}
         </DialogHeader>
 
-        <div className="py-2">
+        <div className="flex flex-col gap-2 py-2">
           <Input
             autoFocus
             placeholder="Project name"
@@ -98,6 +101,7 @@ function RenameProjectDialog() {
               }
             }}
           />
+          {open === "rename" && error && <p className="text-sm text-error">{error}</p>}
         </div>
 
         <DialogFooter>
@@ -114,7 +118,7 @@ function RenameProjectDialog() {
 }
 
 function DeleteProjectDialog() {
-  const { open, targetProject, isLoading, handleDelete, closeDialog } =
+  const { open, targetProject, isLoading, error, handleDelete, closeDialog } =
     useProjectDialogsContext()
 
   return (
@@ -129,6 +133,8 @@ function DeleteProjectDialog() {
             </DialogDescription>
           )}
         </DialogHeader>
+
+        {open === "delete" && error && <p className="text-sm text-error">{error}</p>}
 
         <DialogFooter>
           <Button variant="outline" onClick={closeDialog} disabled={isLoading}>

@@ -153,5 +153,19 @@
   }
   html {
     @apply font-sans;
+    overflow-x: hidden;
   }
+}
+
+/* ReactFlow overrides — keep canvas transparent so bg-base shows through */
+.react-flow,
+.react-flow__renderer,
+.react-flow__background {
+  background: transparent !important;
+}
+
+/* Edge stroke defaults for dark theme */
+.react-flow__edge-path {
+  stroke: var(--border-subtle);
+  stroke-width: 1.5;
 }
