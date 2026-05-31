@@ -71,7 +71,8 @@ function CanvasFlowInner() {
         return
       }
       if (
-        typeof shape !== 'string' || !shape ||
+        typeof shape !== 'string' ||
+        !['rectangle', 'diamond', 'circle', 'pill', 'cylinder', 'hexagon'].includes(shape) ||
         typeof width !== 'number' || !Number.isFinite(width) || width <= 0 ||
         typeof height !== 'number' || !Number.isFinite(height) || height <= 0
       ) return
