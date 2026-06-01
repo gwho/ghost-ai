@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Share2, Bot } from 'lucide-react'
+import { Share2, Bot, LayoutTemplate } from 'lucide-react'
 import type { Project } from '@/lib/generated/prisma'
 import { ShareDialog } from '@/components/editor/share-dialog'
 import { CanvasWrapper } from '@/components/editor/canvas-wrapper'
@@ -15,18 +15,31 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(true)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false)
 
   return (
     <div className="relative h-full">
       {/* Canvas fills the entire area — sidebars and toolbar float over it */}
       <div className="absolute inset-0">
-        <CanvasWrapper roomId={project.id} />
+        <CanvasWrapper
+          roomId={project.id}
+          isTemplatesOpen={isTemplatesOpen}
+          onTemplatesOpenChange={setIsTemplatesOpen}
+        />
       </div>
 
       {/* Workspace toolbar floats over the top of the canvas */}
       <div className="absolute top-0 left-0 right-0 z-20 h-12 flex items-center justify-between px-4 border-b border-surface-border bg-surface">
         <span className="text-sm font-semibold text-copy-primary truncate">{project.name}</span>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsTemplatesOpen(true)}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-sm text-copy-muted hover:text-copy-primary hover:bg-elevated transition-colors"
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Templates
+          </button>
           <button
             type="button"
             onClick={() => setIsShareOpen(true)}
