@@ -29,6 +29,7 @@ export function CanvasNodeComponent({ id, data, selected }: NodeProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const originalLabelRef = useRef<string>('')
 
   useEffect(() => {
     if (editing) textareaRef.current?.focus()
@@ -36,6 +37,7 @@ export function CanvasNodeComponent({ id, data, selected }: NodeProps) {
 
   const startEditing = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
+    originalLabelRef.current = label ?? ''
     setDraft(label ?? '')
     setEditing(true)
   }, [label])
@@ -51,8 +53,12 @@ export function CanvasNodeComponent({ id, data, selected }: NodeProps) {
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     e.stopPropagation()
-    if (e.key === 'Escape') setEditing(false)
-  }, [])
+    if (e.key === 'Escape') {
+      setDraft(originalLabelRef.current)
+      updateNodeData(id, { label: originalLabelRef.current })
+      setEditing(false)
+    }
+  }, [id, updateNodeData])
 
   const activeColor = color ?? NODE_COLORS[0].fill
 

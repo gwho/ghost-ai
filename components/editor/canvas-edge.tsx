@@ -93,10 +93,18 @@ export function CanvasEdgeComponent({
             pointerEvents: 'all',
           }}
           className="nodrag nopan"
+          tabIndex={0}
           onDoubleClick={(e) => {
             e.stopPropagation()
             setDraft(label)
             setEditing(true)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && selected) {
+              e.stopPropagation()
+              setDraft(label)
+              setEditing(true)
+            }
           }}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
@@ -104,6 +112,7 @@ export function CanvasEdgeComponent({
           {editing ? (
             <input
               ref={inputRef}
+              aria-label="Edit edge label"
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value)

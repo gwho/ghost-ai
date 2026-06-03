@@ -27,7 +27,7 @@ const SHAPES: ShapeConfig[] = [
 
 // Renders just the shape outline — used for the drag ghost preview.
 function ShapeGhost({ shape }: { shape: NodeShape }) {
-  const fill = '#1F1F1F'
+  const fill = 'var(--bg-subtle)'
   const stroke = 'var(--border-subtle)'
 
   if (shape === 'rectangle') {
