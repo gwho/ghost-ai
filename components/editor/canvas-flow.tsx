@@ -76,7 +76,7 @@ function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowP
       onEdgesChange(edges.map((e) => ({ type: 'remove' as const, id: e.id })))
       onNodesChange(template.nodes.map((n) => ({ type: 'add' as const, item: n })))
       onEdgesChange(template.edges.map((e) => ({ type: 'add' as const, item: e })))
-      reactFlow.fitView({ duration: 200 })
+      window.setTimeout(() => reactFlow.fitView({ duration: 200 }), 0)
     },
     [nodes, edges, onNodesChange, onEdgesChange, reactFlow],
   )
