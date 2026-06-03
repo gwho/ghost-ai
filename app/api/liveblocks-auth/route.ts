@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
     if (!room) {
       return NextResponse.json({ error: 'Missing or invalid room' }, { status: 400 })
     }
-    }
 
     const access = await getProjectAccess(room)
     if (!access) {

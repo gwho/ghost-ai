@@ -33,9 +33,11 @@ class LiveblocksErrorBoundary extends Component<
 
 interface CanvasWrapperProps {
   roomId: string
+  isTemplatesOpen: boolean
+  onTemplatesOpenChange: (open: boolean) => void
 }
 
-export function CanvasWrapper({ roomId }: CanvasWrapperProps) {
+export function CanvasWrapper({ roomId, isTemplatesOpen, onTemplatesOpenChange }: CanvasWrapperProps) {
   return (
     <LiveblocksErrorBoundary>
       <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
@@ -50,7 +52,10 @@ export function CanvasWrapper({ roomId }: CanvasWrapperProps) {
               </div>
             }
           >
-            <CanvasFlow />
+            <CanvasFlow
+              isTemplatesOpen={isTemplatesOpen}
+              onTemplatesOpenChange={onTemplatesOpenChange}
+            />
           </ClientSideSuspense>
         </RoomProvider>
       </LiveblocksProvider>

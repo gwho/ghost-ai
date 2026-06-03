@@ -12,26 +12,45 @@ import {
   ConnectionMode,
   useReactFlow,
   type NodeTypes,
+  type EdgeTypes,
 } from '@xyflow/react'
 import { useLiveblocksFlow } from '@liveblocks/react-flow'
+import { useHistory, useCanUndo, useCanRedo } from '@liveblocks/react'
 import type { CanvasNode, CanvasEdge, NodeShape } from '@/types/canvas'
 import { NODE_COLORS } from '@/types/canvas'
 import { CanvasNodeComponent } from '@/components/editor/canvas-node'
+import { CanvasEdgeComponent } from '@/components/editor/canvas-edge'
 import { ShapePanel } from '@/components/editor/shape-panel'
+import { CanvasControls } from '@/components/editor/canvas-controls'
+import { StarterTemplatesModal } from '@/components/editor/starter-templates-modal'
+import type { CanvasTemplate } from '@/components/editor/starter-templates'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 const nodeTypes: NodeTypes = {
   canvasNode: CanvasNodeComponent,
 }
 
-export function CanvasFlow() {
+const edgeTypes: EdgeTypes = {
+  canvasEdge: CanvasEdgeComponent,
+}
+
+interface CanvasFlowProps {
+  isTemplatesOpen: boolean
+  onTemplatesOpenChange: (open: boolean) => void
+}
+
+export function CanvasFlow({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowProps) {
   return (
     <ReactFlowProvider>
-      <CanvasFlowInner />
+      <CanvasFlowInner
+        isTemplatesOpen={isTemplatesOpen}
+        onTemplatesOpenChange={onTemplatesOpenChange}
+      />
     </ReactFlowProvider>
   )
 }
 
-function CanvasFlowInner() {
+function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowProps) {
   const {
     nodes,
     edges,
@@ -41,8 +60,32 @@ function CanvasFlowInner() {
     onDelete,
   } = useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true })
 
-  const { screenToFlowPosition } = useReactFlow()
+  const reactFlow = useReactFlow()
+  const { screenToFlowPosition } = reactFlow
   const counter = useRef(0)
+
+  const { undo, redo } = useHistory()
+  const canUndo = useCanUndo()
+  const canRedo = useCanRedo()
+
+  useKeyboardShortcuts(reactFlow, undo, redo)
+
+  const loadTemplate = useCallback(
+    (template: CanvasTemplate) => {
+      onNodesChange([
+        ...nodes.map((n) => ({ type: 'remove' as const, id: n.id })),
+        ...template.nodes.map((n) => ({ type: 'add' as const, item: n })),
+      ])
+      onEdgesChange([
+        ...edges.map((e) => ({ type: 'remove' as const, id: e.id })),
+        ...template.edges.map((e) => ({ type: 'add' as const, item: e })),
+      ])
+      requestAnimationFrame(() => {
+        reactFlow.fitView({ duration: 200 })
+      })
+    },
+    [nodes, edges, onNodesChange, onEdgesChange, reactFlow],
+  )
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -135,18 +178,22 @@ function CanvasFlowInner() {
         onDragOver={onDragOver}
         onDrop={onDrop}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
-        defaultEdgeOptions={{
-          type: 'smoothstep',
-          style: { strokeWidth: 1.5, stroke: 'var(--border-subtle)' },
-        }}
+        defaultEdgeOptions={{ type: 'canvasEdge' }}
         style={{ background: 'transparent' }}
         fitView
       >
         <Background variant={BackgroundVariant.Dots} />
-        <MiniMap />
+        <MiniMap position="bottom-right" />
       </ReactFlow>
+      <CanvasControls undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo} />
       <ShapePanel onCreateShape={onCreateShape} />
+      <StarterTemplatesModal
+        open={isTemplatesOpen}
+        onOpenChange={onTemplatesOpenChange}
+        onImport={loadTemplate}
+      />
     </div>
   )
 }
