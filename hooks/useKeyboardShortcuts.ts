@@ -22,6 +22,7 @@ export function useKeyboardShortcuts(
       if (isEditableTarget(e)) return
 
       const meta = e.metaKey || e.ctrlKey
+      const key = e.key.toLowerCase()
 
       if (!meta && (e.key === '+' || e.key === '=')) {
         flow?.zoomIn({ duration: 200 })
@@ -31,12 +32,12 @@ export function useKeyboardShortcuts(
         flow?.zoomOut({ duration: 200 })
         return
       }
-      if (meta && !e.shiftKey && e.key === 'z') {
+      if (meta && !e.shiftKey && key === 'z') {
         e.preventDefault()
         undo()
         return
       }
-      if (meta && e.shiftKey && e.key === 'z') {
+      if (meta && e.shiftKey && key === 'z') {
         e.preventDefault()
         redo()
         return

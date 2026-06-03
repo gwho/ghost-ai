@@ -72,11 +72,17 @@ function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowP
 
   const loadTemplate = useCallback(
     (template: CanvasTemplate) => {
-      onNodesChange(nodes.map((n) => ({ type: 'remove' as const, id: n.id })))
-      onEdgesChange(edges.map((e) => ({ type: 'remove' as const, id: e.id })))
-      onNodesChange(template.nodes.map((n) => ({ type: 'add' as const, item: n })))
-      onEdgesChange(template.edges.map((e) => ({ type: 'add' as const, item: e })))
-      window.setTimeout(() => reactFlow.fitView({ duration: 200 }), 0)
+      onNodesChange([
+        ...nodes.map((n) => ({ type: 'remove' as const, id: n.id })),
+        ...template.nodes.map((n) => ({ type: 'add' as const, item: n })),
+      ])
+      onEdgesChange([
+        ...edges.map((e) => ({ type: 'remove' as const, id: e.id })),
+        ...template.edges.map((e) => ({ type: 'add' as const, item: e })),
+      ])
+      requestAnimationFrame(() => {
+        reactFlow.fitView({ duration: 200 })
+      })
     },
     [nodes, edges, onNodesChange, onEdgesChange, reactFlow],
   )

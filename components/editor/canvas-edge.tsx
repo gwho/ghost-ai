@@ -26,6 +26,7 @@ export function CanvasEdgeComponent({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const skipBlurCommitRef = useRef(false)
 
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -96,12 +97,14 @@ export function CanvasEdgeComponent({
           tabIndex={0}
           onDoubleClick={(e) => {
             e.stopPropagation()
+            skipBlurCommitRef.current = false
             setDraft(label)
             setEditing(true)
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && selected) {
               e.stopPropagation()
+              skipBlurCommitRef.current = false
               setDraft(label)
               setEditing(true)
             }
@@ -114,14 +117,28 @@ export function CanvasEdgeComponent({
               ref={inputRef}
               aria-label="Edit edge label"
               value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value)
-                updateEdgeData(id, { label: e.target.value })
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={() => {
+                if (skipBlurCommitRef.current) {
+                  skipBlurCommitRef.current = false
+                  return
+                }
+                updateEdgeData(id, { label: draft })
+                setEditing(false)
               }}
-              onBlur={() => setEditing(false)}
               onKeyDown={(e) => {
                 e.stopPropagation()
-                if (e.key === 'Enter' || e.key === 'Escape') setEditing(false)
+                if (e.key === 'Enter') {
+                  skipBlurCommitRef.current = true
+                  updateEdgeData(id, { label: draft })
+                  setEditing(false)
+                  return
+                }
+                if (e.key === 'Escape') {
+                  skipBlurCommitRef.current = true
+                  setDraft(label)
+                  setEditing(false)
+                }
               }}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
