@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Share2, Bot, LayoutTemplate } from 'lucide-react'
 import type { Project } from '@/lib/generated/prisma'
+import { cn } from '@/lib/utils'
 import { ShareDialog } from '@/components/editor/share-dialog'
 import { CanvasWrapper } from '@/components/editor/canvas-wrapper'
-import { AICopilotSidebar } from '@/components/editor/ai-copilot-sidebar'
+import { AISidebar } from '@/components/editor/ai-sidebar'
+import type { SaveStatus } from '@/hooks/use-canvas-autosave'
 
 interface WorkspaceShellProps {
   project: Pick<Project, 'id' | 'name'>
@@ -16,6 +18,23 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(true)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const saveRef = useRef<(() => Promise<void>) | null>(null)
+
+  const handleManualSaveReady = useCallback((fn: () => Promise<void>) => {
+    saveRef.current = fn
+  }, [])
+
+  const handleManualSave = useCallback(() => {
+    saveRef.current?.()
+  }, [])
+
+  // Auto-reset "saved" and "error" indicators after 3 s so the toolbar stays clean
+  useEffect(() => {
+    if (saveStatus !== 'saved' && saveStatus !== 'error') return
+    const t = setTimeout(() => setSaveStatus('idle'), 3000)
+    return () => clearTimeout(t)
+  }, [saveStatus])
 
   return (
     <div className="relative h-full">
@@ -25,6 +44,8 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
           roomId={project.id}
           isTemplatesOpen={isTemplatesOpen}
           onTemplatesOpenChange={setIsTemplatesOpen}
+          onSaveStatusChange={setSaveStatus}
+          onManualSaveReady={handleManualSaveReady}
         />
       </div>
 
@@ -32,6 +53,14 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
       <div className="absolute top-0 left-0 right-0 z-20 h-12 flex items-center justify-between px-4 border-b border-surface-border bg-surface">
         <span className="text-sm font-semibold text-copy-primary truncate">{project.name}</span>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleManualSave}
+            disabled={saveStatus === 'saving'}
+            className="flex items-center h-8 px-3 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-copy-muted hover:text-copy-primary hover:bg-elevated"
+          >
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Error' : 'Save'}
+          </button>
           <button
             type="button"
             onClick={() => setIsTemplatesOpen(true)}
@@ -62,11 +91,14 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
       </div>
 
       {/* AI sidebar floats over the right side of the canvas, below the toolbar */}
-      {isAISidebarOpen && (
-        <div className="absolute right-0 top-12 bottom-0 z-10 w-80">
-          <AICopilotSidebar />
-        </div>
-      )}
+      <div
+        className={cn(
+          "absolute right-0 top-12 bottom-0 z-10 w-80 transition-transform duration-300 ease-in-out",
+          isAISidebarOpen ? "translate-x-0" : "translate-x-full",
+        )}
+      >
+        <AISidebar onClose={() => setIsAISidebarOpen(false)} />
+      </div>
 
       <ShareDialog
         projectId={project.id}

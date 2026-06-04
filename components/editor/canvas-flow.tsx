@@ -2,7 +2,7 @@
 
 import '@xyflow/react/dist/style.css'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -15,7 +15,7 @@ import {
   type EdgeTypes,
 } from '@xyflow/react'
 import { useLiveblocksFlow } from '@liveblocks/react-flow'
-import { useHistory, useCanUndo, useCanRedo } from '@liveblocks/react'
+import { useHistory, useCanUndo, useCanRedo, useUpdateMyPresence } from '@liveblocks/react'
 import type { CanvasNode, CanvasEdge, NodeShape } from '@/types/canvas'
 import { NODE_COLORS } from '@/types/canvas'
 import { CanvasNodeComponent } from '@/components/editor/canvas-node'
@@ -25,6 +25,9 @@ import { CanvasControls } from '@/components/editor/canvas-controls'
 import { StarterTemplatesModal } from '@/components/editor/starter-templates-modal'
 import type { CanvasTemplate } from '@/components/editor/starter-templates'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { PresenceAvatars } from '@/components/editor/presence-avatars'
+import { LiveCursors } from '@/components/editor/live-cursors'
+import { useCanvasAutosave, type SaveStatus } from '@/hooks/use-canvas-autosave'
 
 const nodeTypes: NodeTypes = {
   canvasNode: CanvasNodeComponent,
@@ -35,22 +38,28 @@ const edgeTypes: EdgeTypes = {
 }
 
 interface CanvasFlowProps {
+  projectId: string
   isTemplatesOpen: boolean
   onTemplatesOpenChange: (open: boolean) => void
+  onSaveStatusChange: (status: SaveStatus) => void
+  onManualSaveReady?: (fn: () => Promise<void>) => void
 }
 
-export function CanvasFlow({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowProps) {
+export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady }: CanvasFlowProps) {
   return (
     <ReactFlowProvider>
       <CanvasFlowInner
+        projectId={projectId}
         isTemplatesOpen={isTemplatesOpen}
         onTemplatesOpenChange={onTemplatesOpenChange}
+        onSaveStatusChange={onSaveStatusChange}
+        onManualSaveReady={onManualSaveReady}
       />
     </ReactFlowProvider>
   )
 }
 
-function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowProps) {
+function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady }: CanvasFlowProps) {
   const {
     nodes,
     edges,
@@ -67,8 +76,54 @@ function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowP
   const { undo, redo } = useHistory()
   const canUndo = useCanUndo()
   const canRedo = useCanRedo()
+  const updateMyPresence = useUpdateMyPresence()
 
   useKeyboardShortcuts(reactFlow, undo, redo)
+
+  // Load saved canvas on mount if the room is empty (no active collaboration)
+  const hasLoadedRef = useRef(false)
+  useEffect(() => {
+    if (hasLoadedRef.current) return
+    hasLoadedRef.current = true
+    if (nodes.length > 0 || edges.length > 0) {
+      // Liveblocks already has nodes (collaborative session) — fit to show them
+      requestAnimationFrame(() => reactFlow.fitView())
+      return
+    }
+    fetch(`/api/projects/${projectId}/canvas`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.nodes?.length && !data?.edges?.length) return
+        onNodesChange(data.nodes.map((n: CanvasNode) => ({ type: 'add' as const, item: n })))
+        onEdgesChange(data.edges.map((e: CanvasEdge) => ({ type: 'add' as const, item: e })))
+        requestAnimationFrame(() => reactFlow.fitView())
+      })
+      .catch(() => {})
+  // intentional empty deps — run once after room is fully synced (suspense: true guarantees this)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const { saveStatus, save } = useCanvasAutosave(projectId, nodes, edges)
+
+  useEffect(() => {
+    onSaveStatusChange(saveStatus)
+  }, [saveStatus, onSaveStatusChange])
+
+  useEffect(() => {
+    onManualSaveReady?.(save)
+  }, [onManualSaveReady, save])
+
+  const onMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      updateMyPresence({ cursor: screenToFlowPosition({ x: e.clientX, y: e.clientY }) })
+    },
+    [updateMyPresence, screenToFlowPosition],
+  )
+
+  const onMouseLeave = useCallback(() => {
+    updateMyPresence({ cursor: null })
+  }, [updateMyPresence])
 
   const loadTemplate = useCallback(
     (template: CanvasTemplate) => {
@@ -120,7 +175,8 @@ function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowP
         typeof height !== 'number' || !Number.isFinite(height) || height <= 0
       ) return
 
-      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const canvasPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const position = { x: canvasPos.x - width / 2, y: canvasPos.y - height / 2 }
       counter.current += 1
       const id = `${shape}-${Date.now()}-${counter.current}`
 
@@ -167,6 +223,8 @@ function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowP
       className="w-full h-full relative"
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
     >
       <ReactFlow
         nodes={nodes}
@@ -177,18 +235,21 @@ function CanvasFlowInner({ isTemplatesOpen, onTemplatesOpenChange }: CanvasFlowP
         onDelete={onDelete}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
         defaultEdgeOptions={{ type: 'canvasEdge' }}
         style={{ background: 'transparent' }}
-        fitView
       >
         <Background variant={BackgroundVariant.Dots} />
         <MiniMap position="bottom-right" />
       </ReactFlow>
+      <LiveCursors />
       <CanvasControls undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo} />
       <ShapePanel onCreateShape={onCreateShape} />
+      <PresenceAvatars />
       <StarterTemplatesModal
         open={isTemplatesOpen}
         onOpenChange={onTemplatesOpenChange}

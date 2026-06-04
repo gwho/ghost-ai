@@ -2,7 +2,7 @@ declare global {
   interface Liveblocks {
     Presence: {
       cursor: { x: number; y: number } | null;
-      isThinking: boolean;
+      thinking: boolean;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
