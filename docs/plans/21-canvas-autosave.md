@@ -28,7 +28,7 @@ Add durable persistence for the collaborative canvas. Canvas JSON is stored in V
 **PUT** — member-only write (all collaborators can trigger autosave):
 1. `getProjectAccess(projectId)` → 401 if not a member.
 2. Parse `{ nodes, edges }` from body.
-3. `put('canvas/${projectId}.json', JSON.stringify({ nodes, edges }), { access: 'public', addRandomSuffix: false })`.
+3. `put('canvas/${projectId}.json', JSON.stringify({ nodes, edges }), { access: 'private', contentType: 'application/json', addRandomSuffix: false })`.
 4. `prisma.project.update({ canvasJsonPath: blob.url })`.
 5. Return `{ url }`.
 

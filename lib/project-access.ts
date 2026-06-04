@@ -1,22 +1,13 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import type { Project } from '@/lib/generated/prisma'
-
-function isTransientConnectionError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : ''
-  return (
-    msg.includes('Failed to connect') ||
-    msg.includes('upstream database') ||
-    msg.includes("Can't reach database") ||
-    msg.includes('Connection timed out')
-  )
-}
+import { isTransientUpstreamError } from '@/lib/upstream-errors'
 
 async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn()
   } catch (err) {
-    if (!isTransientConnectionError(err)) throw err
+    if (!isTransientUpstreamError(err)) throw err
     await new Promise((r) => setTimeout(r, 300))
     return fn()
   }

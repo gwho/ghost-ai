@@ -51,10 +51,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const message =
-      error instanceof Error ? error.message : 'Internal server error'
-    console.error('[liveblocks-auth]', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[liveblocks-auth]', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

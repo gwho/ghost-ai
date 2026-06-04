@@ -63,17 +63,77 @@ If you have an existing `middleware.ts`, Next.js 16 provides a codemod to migrat
 npx @next/codemod@canary middleware-to-proxy .
 ```
 
-The codemod renames the file AND the export function:
+### What the codemod changes
+
+The codemod performs **two** renames — the filename and the exported symbol:
 
 ```ts
-// middleware.ts → proxy.ts
-- export function middleware() {
-+ export function proxy() {
+// Before (middleware.ts)
+export function middleware(request: NextRequest) { ... }
+
+// After (proxy.ts) — both the file and the function are renamed
+export function proxy(request: NextRequest) { ... }
 ```
 
-**Important:** Our file uses `export default clerkMiddleware(...)` — a default export
-of Clerk's wrapper, not a named `middleware` function. Only the **filename** needed
-to be `proxy.ts`. The export itself did not change.
+Next.js 16 discovers the proxy by looking for `proxy.ts` at the project root (or
+`src/`) and reads whichever export that file provides — either a **named `proxy`
+function** or a **default export**. Both are valid.
+
+### How this interacts with Clerk (`clerkMiddleware`)
+
+Clerk's integration uses `export default clerkMiddleware(...)`, not a named
+`middleware()` or `proxy()` function:
+
+```ts
+// Clerk-style: default export, not a named function
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) await auth.protect()
+})
+```
+
+**What the codemod does to a file like this:** because there is no named
+`export function middleware()` to rename, the codemod only renames the
+**file** (`middleware.ts` → `proxy.ts`). The `export default clerkMiddleware(...)`
+line is left exactly as-is. No manual change to the export is required.
+
+**Is a default export supported in `proxy.ts`?** Yes — Next.js 16 accepts a
+default export in `proxy.ts` the same way it accepted one in `middleware.ts`.
+The working proxy in this project uses `export default clerkMiddleware(...)` and
+is correctly discovered and invoked by the Next.js 16 runtime.
+
+**Alternative: named `proxy` export wrapping Clerk**
+
+If you prefer the explicit named-export style, or if a future version of Next.js
+drops default-export support in `proxy.ts`, you can wrap `clerkMiddleware` in a
+named function:
+
+```ts
+// proxy.ts — named export style
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+
+const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
+
+export function proxy(request: NextRequest) {
+  return clerkMiddleware(async (auth, req) => {
+    if (!isPublicRoute(req)) await auth.protect()
+  })(request)
+}
+
+export const config = { matcher: [...] }
+```
+
+Both styles work on Next.js 16.2.6. The default-export style is simpler and is
+what this project uses. Use the named-export style only if you need to call
+`proxy` directly in tests or if a future codemod explicitly requires it.
+
+### Summary table
+
+| File name | Export style | Works on Next.js 16? | Notes |
+|-----------|-------------|----------------------|-------|
+| `middleware.ts` | `export function middleware()` | No | Old convention; file is ignored |
+| `proxy.ts` | `export function proxy()` | Yes | Explicit named export after codemod |
+| `proxy.ts` | `export default clerkMiddleware(...)` | Yes | Used in this project; default export is supported |
+| `middleware.ts` | `export default clerkMiddleware(...)` | No | Correct export, wrong filename; file is ignored |
 
 ---
 
