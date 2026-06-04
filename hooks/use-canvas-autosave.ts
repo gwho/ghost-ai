@@ -9,9 +9,10 @@ export function useCanvasAutosave(
   projectId: string,
   nodes: CanvasNode[],
   edges: CanvasEdge[],
+  isReady = true,
 ): { saveStatus: SaveStatus; save: () => Promise<void> } {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
-  const isFirstRender = useRef(true)
+  const hasStartedAutosave = useRef(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Refs mirror the latest nodes/edges so the save callback stays stable
@@ -42,9 +43,16 @@ export function useCanvasAutosave(
   }, [projectId])
 
   useEffect(() => {
-    // Skip autosave on initial mount — don't re-upload data that was just loaded
-    if (isFirstRender.current) {
-      isFirstRender.current = false
+    if (!isReady) {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      hasStartedAutosave.current = false
+      return
+    }
+
+    // Skip the first autosave after the canvas is ready so loading persisted
+    // data or joining an active room does not immediately write it back.
+    if (!hasStartedAutosave.current) {
+      hasStartedAutosave.current = true
       return
     }
 
@@ -54,7 +62,7 @@ export function useCanvasAutosave(
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [nodes, edges, save])
+  }, [isReady, nodes, edges, save])
 
   return { saveStatus, save }
 }

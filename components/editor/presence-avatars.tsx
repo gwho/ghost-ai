@@ -1,5 +1,6 @@
 "use client"
 
+import Image from 'next/image'
 import { useOthers } from '@liveblocks/react'
 import { useUser, UserButton } from '@clerk/nextjs'
 
@@ -22,12 +23,12 @@ function CollaboratorAvatar({
 
   return (
     <div
-      className="w-7 h-7 rounded-full shrink-0 ring-2 ring-base overflow-hidden flex items-center justify-center text-xs font-semibold text-white"
+      className="relative w-7 h-7 rounded-full shrink-0 ring-2 ring-base overflow-hidden flex items-center justify-center text-xs font-semibold text-white"
       style={{ backgroundColor: color }}
       title={name}
     >
       {avatar ? (
-        <img src={avatar} alt={name} className="w-full h-full object-cover" />
+        <Image src={avatar} alt={name} fill sizes="28px" className="object-cover" />
       ) : (
         initials
       )}

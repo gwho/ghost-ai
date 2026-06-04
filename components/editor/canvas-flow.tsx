@@ -2,7 +2,7 @@
 
 import '@xyflow/react/dist/style.css'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -72,6 +72,9 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
   const reactFlow = useReactFlow()
   const { screenToFlowPosition } = reactFlow
   const counter = useRef(0)
+  const [isAutosaveReady, setIsAutosaveReady] = useState(
+    () => nodes.length > 0 || edges.length > 0,
+  )
 
   const { undo, redo } = useHistory()
   const canUndo = useCanUndo()
@@ -99,11 +102,14 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
         requestAnimationFrame(() => reactFlow.fitView())
       })
       .catch(() => {})
+      .finally(() => {
+        setIsAutosaveReady(true)
+      })
   // intentional empty deps — run once after room is fully synced (suspense: true guarantees this)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const { saveStatus, save } = useCanvasAutosave(projectId, nodes, edges)
+  const { saveStatus, save } = useCanvasAutosave(projectId, nodes, edges, isAutosaveReady)
 
   useEffect(() => {
     onSaveStatusChange(saveStatus)
