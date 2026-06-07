@@ -114,14 +114,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Canvas payload is too large' }, { status: 413 })
   }
 
-  if (!Array.isArray(nodes) || !Array.isArray(edges)) {
-    return NextResponse.json(
-      { error: 'nodes and edges must be arrays' },
-      { status: 400 },
-    )
-  }
-
-  if (!nodes.every(isValidNode)) {
+  if (!payload.nodes.every(isValidNode)) {
     return NextResponse.json(
       {
         error:
@@ -131,7 +124,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     )
   }
 
-  if (!edges.every(isValidEdge)) {
+  if (!payload.edges.every(isValidEdge)) {
     return NextResponse.json(
       {
         error:

@@ -15,7 +15,7 @@ import {
   type EdgeTypes,
 } from '@xyflow/react'
 import { useLiveblocksFlow } from '@liveblocks/react-flow'
-import { useHistory, useCanUndo, useCanRedo, useUpdateMyPresence } from '@liveblocks/react'
+import { useHistory, useCanUndo, useCanRedo, useUpdateMyPresence, useEventListener } from '@liveblocks/react'
 import type { CanvasNode, CanvasEdge, NodeShape } from '@/types/canvas'
 import { NODE_COLORS } from '@/types/canvas'
 import { CanvasNodeComponent } from '@/components/editor/canvas-node'
@@ -28,6 +28,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { PresenceAvatars } from '@/components/editor/presence-avatars'
 import { LiveCursors } from '@/components/editor/live-cursors'
 import { useCanvasAutosave, type SaveStatus } from '@/hooks/use-canvas-autosave'
+import { validateAiStatusPayload } from '@/types/tasks'
 
 const nodeTypes: NodeTypes = {
   canvasNode: CanvasNodeComponent,
@@ -43,9 +44,12 @@ interface CanvasFlowProps {
   onTemplatesOpenChange: (open: boolean) => void
   onSaveStatusChange: (status: SaveStatus) => void
   onManualSaveReady?: (fn: () => Promise<void>) => void
+  isAiThinking?: boolean
+  onAiStatus?: (event: { message: string; status: string }) => void
+  onAiComplete?: () => void
 }
 
-export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady }: CanvasFlowProps) {
+export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete }: CanvasFlowProps) {
   return (
     <ReactFlowProvider>
       <CanvasFlowInner
@@ -54,12 +58,15 @@ export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, 
         onTemplatesOpenChange={onTemplatesOpenChange}
         onSaveStatusChange={onSaveStatusChange}
         onManualSaveReady={onManualSaveReady}
+        isAiThinking={isAiThinking}
+        onAiStatus={onAiStatus}
+        onAiComplete={onAiComplete}
       />
     </ReactFlowProvider>
   )
 }
 
-function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady }: CanvasFlowProps) {
+function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete }: CanvasFlowProps) {
   const {
     nodes,
     edges,
@@ -80,6 +87,19 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
   const canUndo = useCanUndo()
   const canRedo = useCanRedo()
   const updateMyPresence = useUpdateMyPresence()
+
+  useEffect(() => {
+    updateMyPresence({ thinking: isAiThinking ?? false })
+  }, [isAiThinking, updateMyPresence])
+
+  useEventListener(({ event }) => {
+    const payload = validateAiStatusPayload(event)
+    if (!payload) return
+    onAiStatus?.({ message: payload.message, status: payload.status })
+    if (payload.status === 'complete' || payload.status === 'error') {
+      onAiComplete?.()
+    }
+  })
 
   useKeyboardShortcuts(reactFlow, undo, redo)
 

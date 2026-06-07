@@ -2,6 +2,7 @@
 
 import { useOthers } from '@liveblocks/react'
 import { useViewport } from '@xyflow/react'
+import { Loader2 } from 'lucide-react'
 
 export function LiveCursors() {
   const others = useOthers()
@@ -37,9 +38,12 @@ export function LiveCursors() {
               />
             </svg>
             <span
-              className="mt-1 px-1.5 py-0.5 rounded-full text-xs font-medium text-white whitespace-nowrap"
+              className="mt-1 px-1.5 py-0.5 rounded-full text-xs font-medium text-white whitespace-nowrap flex items-center gap-1"
               style={{ backgroundColor: other.info.color }}
             >
+              {other.presence.thinking && (
+                <Loader2 className="h-2.5 w-2.5 animate-spin flex-none" />
+              )}
               {other.info.name}
             </span>
           </div>
