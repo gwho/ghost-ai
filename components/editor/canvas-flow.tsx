@@ -38,6 +38,26 @@ const edgeTypes: EdgeTypes = {
   canvasEdge: CanvasEdgeComponent,
 }
 
+function createFallbackUuid() {
+  const bytes = new Uint8Array(16)
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes)
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
+}
+
+function createNodeId(shape: string) {
+  const uuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : createFallbackUuid()
+  return `${shape}-${uuid}`
+}
+
 interface CanvasFlowProps {
   projectId: string
   isTemplatesOpen: boolean
@@ -78,7 +98,6 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
 
   const reactFlow = useReactFlow()
   const { screenToFlowPosition } = reactFlow
-  const counter = useRef(0)
   const [isAutosaveReady, setIsAutosaveReady] = useState(
     () => nodes.length > 0 || edges.length > 0,
   )
@@ -203,8 +222,7 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
 
       const canvasPos = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       const position = { x: canvasPos.x - width / 2, y: canvasPos.y - height / 2 }
-      counter.current += 1
-      const id = `${shape}-${Date.now()}-${counter.current}`
+      const id = createNodeId(shape)
 
       const newNode: CanvasNode = {
         id,
@@ -227,8 +245,7 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
       })
-      counter.current += 1
-      const id = `${shape}-${Date.now()}-${counter.current}`
+      const id = createNodeId(shape)
       const newNode: CanvasNode = {
         id,
         type: 'canvasNode',

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { tasks } from '@trigger.dev/sdk'
+import { idempotencyKeys, tasks } from '@trigger.dev/sdk'
 import type { designAgent } from '@/trigger/design-agent'
 import { getProjectAccess } from '@/lib/project-access'
 
@@ -9,14 +9,21 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body
+  let body: unknown
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 })
   }
 
-  const { prompt, roomId, projectId } = body
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: 'Request body must be a JSON object' },
+      { status: 400 },
+    )
+  }
+
+  const { prompt, roomId, projectId } = body as Record<string, unknown>
   if (!prompt || !roomId || !projectId) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
@@ -34,9 +41,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
+  const idempotencyKey = await idempotencyKeys.create(
+    ['ai-design-start', userId, projectId, roomId, prompt],
+    { scope: 'global' },
+  )
+
   let handle
   try {
-    handle = await tasks.trigger<typeof designAgent>('design-agent', { prompt, roomId })
+    handle = await tasks.trigger<typeof designAgent>(
+      'design-agent',
+      { prompt, roomId },
+      { idempotencyKey, idempotencyKeyTTL: '1h' },
+    )
   } catch (error) {
     console.error('[ai-design] failed to trigger design-agent', error)
     return NextResponse.json({ error: 'Failed to start design run' }, { status: 502 })
