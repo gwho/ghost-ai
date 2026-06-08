@@ -6,6 +6,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 interface EditorNavbarProps {
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  isWorkspace?: boolean
 }
 
 /**
@@ -15,7 +16,7 @@ interface EditorNavbarProps {
  * @param onToggleSidebar - Click handler invoked to toggle the sidebar open state
  * @returns The navigation bar element containing the sidebar toggle and layout placeholders
  */
-export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarProps) {
+export function EditorNavbar({ isSidebarOpen, onToggleSidebar, isWorkspace }: EditorNavbarProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-3 bg-surface border-b border-surface-border">
       <div>
@@ -35,9 +36,11 @@ export function EditorNavbar({ isSidebarOpen, onToggleSidebar }: EditorNavbarPro
 
       <div className="flex-1" />
 
-      <div>
-        <UserButton />
-      </div>
+      {!isWorkspace && (
+        <div>
+          <UserButton />
+        </div>
+      )}
     </nav>
   )
 }

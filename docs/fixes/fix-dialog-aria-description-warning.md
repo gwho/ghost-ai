@@ -1,4 +1,6 @@
-# Fix: Missing `Description` or `aria-describedby` for DialogContent
+Verify each finding against current code. Fix only still-valid issues, skip the rest with a brief reason, keep changes minimal, and validate.
+
+In @my-app-ghost/docs/fixes/fix-dialog-aria-description-warning.md around lines 5 - 7, The fenced code block showing the Warning message lacks a language identifier; update the backticks surrounding the block that contains "Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}." to include a language tag (e.g., use `text or `console) so it matches other code blocks and improves rendering/consistency.# Fix: Missing `Description` or `aria-describedby` for DialogContent
 
 ## What the warning said
 
@@ -35,6 +37,7 @@ description is needed.
 ```
 
 The other two dialogs already had conditional `<DialogDescription>` elements:
+
 - **Rename**: `Rename "<project name>"`
 - **Delete**: `This will permanently delete "<project name>". This cannot be undone.`
 
@@ -49,7 +52,9 @@ Added a `<DialogDescription>` to `CreateProjectDialog`:
 ```tsx
 <DialogHeader>
   <DialogTitle>New Project</DialogTitle>
-  <DialogDescription>Give your new project a name to get started.</DialogDescription>
+  <DialogDescription>
+    Give your new project a name to get started.
+  </DialogDescription>
 </DialogHeader>
 ```
 
@@ -59,9 +64,9 @@ One line, in `components/editor/project-dialogs.tsx`.
 
 Radix gives you two ways to handle this:
 
-| Approach | When to use |
-|---|---|
-| Add `<DialogDescription>` | When you can write a meaningful description — always preferred for accessibility |
+| Approach                                               | When to use                                                                                   |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Add `<DialogDescription>`                              | When you can write a meaningful description — always preferred for accessibility              |
 | Pass `aria-describedby={undefined}` to `DialogContent` | When the dialog is self-explanatory and adding a description would be redundant or misleading |
 
 `aria-describedby={undefined}` tells Radix "I know there's no description; I'm opting out intentionally." It silences the warning without adding visible text. We didn't use this here because a short description genuinely helps the Create dialog.

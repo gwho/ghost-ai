@@ -18,7 +18,12 @@ function createPrismaClient(): PrismaClient {
     /([?&])sslmode=(prefer|require|verify-ca)(&|$)/g,
     '$1sslmode=verify-full$3',
   )
-  const adapter = new PrismaPg({ connectionString: normalizedUrl })
+  const adapter = new PrismaPg({
+    connectionString: normalizedUrl,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  })
   return new PrismaClient({ adapter })
 }
 
