@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { EditorNavbar } from "@/components/editor/editor-navbar"
 import { ProjectSidebar } from "@/components/editor/project-sidebar"
 import { ProjectDialogsProvider } from "@/components/editor/project-dialogs-context"
@@ -14,6 +15,8 @@ interface EditorShellProps {
 
 export function EditorShell({ children, initialOwned, initialShared }: EditorShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const pathname = usePathname()
+  const isWorkspace = pathname.startsWith('/editor/')
 
   return (
     <ProjectDialogsProvider initialOwned={initialOwned} initialShared={initialShared}>
@@ -21,6 +24,7 @@ export function EditorShell({ children, initialOwned, initialShared }: EditorShe
         <EditorNavbar
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          isWorkspace={isWorkspace}
         />
 
         {isSidebarOpen && (

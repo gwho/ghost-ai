@@ -1,6 +1,17 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import type { Project } from '@/lib/generated/prisma'
+import { isTransientUpstreamError } from '@/lib/upstream-errors'
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    if (!isTransientUpstreamError(err)) throw err
+    await new Promise((r) => setTimeout(r, 300))
+    return fn()
+  }
+}
 
 export interface CurrentIdentity {
   userId: string
@@ -20,16 +31,19 @@ export async function getCurrentIdentity(): Promise<CurrentIdentity | null> {
 
 export async function getProjectAccess(
   projectId: string,
+  knownIdentity?: CurrentIdentity,
 ): Promise<{ project: Project; isOwner: boolean } | null> {
-  const identity = await getCurrentIdentity()
+  const identity = knownIdentity ?? (await getCurrentIdentity())
   if (!identity) return null
 
   const { userId, email } = identity
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: { collaborators: true },
-  })
+  const project = await withRetry(() =>
+    prisma.project.findUnique({
+      where: { id: projectId },
+      include: { collaborators: true },
+    }),
+  )
 
   if (!project) return null
 

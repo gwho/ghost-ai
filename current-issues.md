@@ -1,42 +1,23 @@
-Review the editor canvas implementation and fix the visual issues. The canvas currently looks like it's floating above the background inside a border box, instead of feeling like a real design canvas. Check `/context/screenshots/image.png` for the current broken state.
+## Status
 
-Read the current canvas component code in `components/editor`
+No active runtime errors.
 
-Issues to look for and document:
+## Recently Fixed
 
-DRAG AND DROP ISSUES:
+### AI Architect tab — messages vanish and no visual feedback (Fix 28)
 
-- Canvas nodes from the node panel cannot be dragged and dropped onto the canvas. Investigate and fix the full drag-and-drop pipeline:
-- Confirm that draggable nodes in the node panel have the correct draggable attribute and onDragStart handler that sets the node type in dataTransfer
-- Confirm that the canvas has onDragOver (with preventDefault to allow dropping) and onDrop handlers wired up correctly
-- Ensure the drop handler reads the node type from dataTransfer, calculates the correct canvas coordinates accounting for pan offset and zoom scale, and creates a new node at the dropped position
-- Check that no parent element is intercepting or blocking the drag events before they reach the canvas
+**Symptoms:**
+- Messages disappeared after sending a prompt in the AI Architect tab
+- No loading state, no AI completion message despite the backend running successfully
 
-CANVAS VISUAL ISSUES:
+**Root cause:** `RunTracker` (which calls `useRealtimeRun`) was inside the same `ClientSideSuspense fallback={null}` boundary as the rest of the sidebar. Suspense or errors from the Trigger.dev hook propagated to this boundary, unmounting the entire sidebar and losing all local state.
 
-- Box shadow or elevation styles making the canvas appear to float
-- Border or border-radius giving it a "card" appearance instead of a canvas feel
-- Background color mismatch between canvas and its container
-- Missing or incorrect dotted background pattern on the canvas
-- z-index or positioning (absolute/relative) causing the floating effect
-- Padding/margin around the canvas creating separation from the background
-- Any wrapper div styles (like rounded corners, shadows, or elevated backgrounds) treating the canvas as a UI card
+**Fix:** Isolated `RunTracker` with its own `<Suspense>` + error boundary. Hardened completion detection with `useEffect` on `run.status`. Added `sessionStorage` persistence for `runId`/`publicToken` to survive re-mounts.
 
-SIDEBAR ISSUES:
+See: `docs/plans/fix-28-architect-tab-messages-vanishing.md`
 
-- The left and right sidebars should float OVER the canvas, not push or shrink it
-- Sidebars must use position: fixed or position: absolute with a higher z-index so the canvas extends fully behind them
-- The canvas background (dotted pattern) should be visible edge-to-edge underneath both sidebars
-- Sidebars should have a semi-transparent or solid background with a subtle shadow so they feel elevated above the canvas, not embedded in the layout
-- The left sidebar is not fully hiding when toggled off
+### RoomProvider missing from React tree (Fix 25)
 
-— it is partially visible or peeking out instead of sliding completely off-screen. When closed, the sidebar should translate fully outside the viewport with no visible remnant. Check for incorrect transform: translateX values, insufficient negative offset, overflow issues on the parent container, or missing overflow: hidden that is causing the sidebar to remain partially visible during or after the close transition.
+Previously fixed — `RoomProvider` was lifted from `canvas-wrapper.tsx` to `workspace-shell.tsx`.
 
-After documenting all issues fix all of the above so that:
-
-1. The canvas has a dotted background pattern filling the full viewport naturally
-2. The canvas feels flush with the surrounding background — no floating, no card effect
-3. Box-shadow, excessive borders, and elevated styling are removed from the canvas
-4. The canvas looks and feels like an infinite design canvas (similar to Figma or Excalidraw)
-5. Both sidebars float over the canvas and are fully hidden when toggled off
-6. Nodes can be dragged from the node panel and dropped onto the canvas correctly
+See: `docs/plans/fix-25-roomprovider-not-lifted.md`

@@ -2,7 +2,7 @@ declare global {
   interface Liveblocks {
     Presence: {
       cursor: { x: number; y: number } | null;
-      isThinking: boolean;
+      thinking: boolean;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -17,8 +17,15 @@ declare global {
       };
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    RoomEvent: {};
+    RoomEvent:
+      | { type: 'ai-status'; message: string; status: 'start' | 'processing' | 'complete' | 'error' };
+
+    FeedMessageData: {
+      sender: string;
+      role: 'user' | 'assistant';
+      content: string;
+      timestamp: number;
+    };
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     ThreadMetadata: {};
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
