@@ -53,8 +53,12 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
     saveRef.current = fn
   }, [])
 
-  const handleManualSave = useCallback(() => {
-    saveRef.current?.()
+  const handleManualSave = useCallback(async () => {
+    try {
+      await saveRef.current?.()
+    } catch {
+      setSaveStatus('error')
+    }
   }, [])
 
   const handleAiComplete = useCallback(() => {
@@ -100,6 +104,7 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
           <button
             type="button"
             onClick={() => setIsTemplatesOpen(true)}
+            aria-haspopup="dialog"
             className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-sm text-copy-muted hover:text-copy-primary hover:bg-elevated transition-colors"
           >
             <LayoutTemplate className="h-4 w-4" />
@@ -108,6 +113,7 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
           <button
             type="button"
             onClick={() => setIsShareOpen(true)}
+            aria-haspopup="dialog"
             className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-sm text-copy-muted hover:text-copy-primary hover:bg-elevated transition-colors"
           >
             <Share2 className="h-4 w-4" />

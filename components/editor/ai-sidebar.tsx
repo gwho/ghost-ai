@@ -30,7 +30,7 @@ function RunTracker({ runId, publicToken, onComplete }: RunTrackerProps) {
   const onCompleteRef = useRef(onComplete)
   const firedRef = useRef(false)
 
-  const { run } = useRealtimeRun(runId, { accessToken: publicToken })
+  const { run, error } = useRealtimeRun(runId, { accessToken: publicToken })
 
   useEffect(() => {
     onCompleteRef.current = onComplete
@@ -43,6 +43,12 @@ function RunTracker({ runId, publicToken, onComplete }: RunTrackerProps) {
       onCompleteRef.current(run.status === 'COMPLETED')
     }
   }, [run])
+
+  useEffect(() => {
+    if (!error || firedRef.current) return
+    firedRef.current = true
+    onCompleteRef.current(false)
+  }, [error])
 
   return null
 }

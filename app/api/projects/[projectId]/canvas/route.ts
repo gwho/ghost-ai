@@ -86,6 +86,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
       throw new Error('Saved canvas payload is invalid')
     }
 
+    if (!parsed.nodes.every(isValidNode) || !parsed.edges.every(isValidEdge)) {
+      throw new Error('Saved canvas entries are invalid')
+    }
+
     return NextResponse.json(parsed)
   } catch {
     return NextResponse.json({ error: 'Failed to load saved canvas' }, { status: 503 })

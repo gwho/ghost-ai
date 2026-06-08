@@ -26,7 +26,7 @@ function ControlButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="rounded-lg p-1.5 text-copy-primary hover:bg-surface-border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      className="rounded-xl p-1.5 text-copy-primary hover:bg-surface-border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {children}
     </button>
