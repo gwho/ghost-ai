@@ -1,4 +1,4 @@
-import { schemaTask, metadata } from '@trigger.dev/sdk'
+import { schemaTask, metadata, wait } from '@trigger.dev/sdk'
 import { generateText } from 'ai'
 import { google } from '@ai-sdk/google'
 import { z } from 'zod'
@@ -66,6 +66,10 @@ Rules:
 - If the diagram is empty, write a brief placeholder noting no architecture has been defined yet
 - Output only the Markdown document — no preamble, no code fences around the whole document`
 
+// Seconds to wait before each retry when the model reports high demand / rate limiting.
+// wait.for calls are checkpointed by Trigger.dev and do not count as billable compute time.
+const GENERATE_RETRY_DELAY_SECONDS = [10, 20, 40]
+
 export const generateSpec = schemaTask({
   id: 'generate-spec',
   schema: SpecPayloadSchema,
@@ -109,11 +113,27 @@ export const generateSpec = schemaTask({
       ...(chatText ? [`## Design Discussion\n${chatText}`] : []),
     ]
 
-    const result = await generateText({
-      model: google('gemini-2.5-flash-lite'),
-      system: SYSTEM_PROMPT,
-      prompt: sections.join('\n\n'),
-    })
+    const generateWithRetry = async () => {
+      for (let attempt = 0; attempt <= GENERATE_RETRY_DELAY_SECONDS.length; attempt++) {
+        try {
+          return await generateText({
+            model: google('gemini-2.5-flash-lite'),
+            system: SYSTEM_PROMPT,
+            prompt: sections.join('\n\n'),
+          })
+        } catch (err) {
+          const msg = String(err).toLowerCase()
+          const isTransient = ['high demand', 'rate limit', '429', '503', 'overloaded'].some(
+            (s) => msg.includes(s),
+          )
+          if (!isTransient || attempt === GENERATE_RETRY_DELAY_SECONDS.length) throw err
+          await wait.for({ seconds: GENERATE_RETRY_DELAY_SECONDS[attempt] })
+        }
+      }
+      throw new Error('generate-spec: retry loop exited without result')
+    }
+
+    const result = await generateWithRetry()
 
     metadata.set('status', 'saving')
 
