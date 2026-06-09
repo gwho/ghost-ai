@@ -14,26 +14,27 @@ export async function getEditorProjects(): Promise<{
   const { userId } = await auth()
   if (!userId) return { owned: [], shared: [] }
 
-  const user = await currentUser()
-  const primaryAddr = user?.emailAddresses.find(
-    (ea) => ea.id === user.primaryEmailAddressId,
-  )
-  const email = (primaryAddr ?? user?.emailAddresses[0])?.emailAddress?.toLowerCase()
-
-  const [ownedRaw, sharedRaw] = await Promise.all([
+  const [user, ownedRaw] = await Promise.all([
+    currentUser(),
     prisma.project.findMany({
       where: { ownerId: userId },
       select: { id: true, name: true },
       orderBy: { createdAt: 'desc' },
     }),
-    email
-      ? prisma.projectCollaborator.findMany({
-          where: { email },
-          include: { project: { select: { id: true, name: true } } },
-          orderBy: { createdAt: 'desc' },
-        })
-      : Promise.resolve([]),
   ])
+
+  const primaryAddr = user?.emailAddresses.find(
+    (ea) => ea.id === user.primaryEmailAddressId,
+  )
+  const email = (primaryAddr ?? user?.emailAddresses[0])?.emailAddress?.toLowerCase()
+
+  const sharedRaw = email
+    ? await prisma.projectCollaborator.findMany({
+        where: { email },
+        include: { project: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+      })
+    : []
 
   const ownedIds = new Set(ownedRaw.map((p) => p.id))
 
