@@ -1,13 +1,23 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect, Suspense, Component, type ReactNode } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Bot, X, FileText, Download, Send, Loader2, AlertCircle, MessageSquare } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { useFeedMessages, useCreateFeedMessage, useCreateFeed, useSelf, useEventListener } from '@liveblocks/react'
 import { useRealtimeRun } from '@trigger.dev/react-hooks'
 import { validateAiChatMessage, validateAiStatusPayload } from '@/types/tasks'
+import type { CanvasNode, CanvasEdge } from '@/types/canvas'
 
 const CHAT_FEED_ID = 'ai-chat'
 const ARCHITECT_FEED_ID = 'ai-architect-feed'
@@ -79,10 +89,21 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function getSpecFilename(filePath: string): string {
+  return filePath.split('/').pop() ?? 'spec.md'
+}
+
+interface SpecItem {
+  id: string
+  filePath: string
+  createdAt: string
+}
+
 interface AISidebarProps {
   onClose: () => void
   roomId: string
   onThinkingChange?: (thinking: boolean) => void
+  getCanvasSnapshot?: () => { nodes: CanvasNode[]; edges: CanvasEdge[] } | null
 }
 
 function getRunStorageKey(roomId: string) {
@@ -113,7 +134,52 @@ function clearPersistedRun(roomId: string) {
   } catch { /* unavailable */ }
 }
 
-export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps) {
+const markdownComponents = {
+  h1: ({ children }: { children?: ReactNode }) => (
+    <h1 className="text-base font-bold text-copy-primary mb-3 mt-5 first:mt-0 border-b border-surface-border pb-1">{children}</h1>
+  ),
+  h2: ({ children }: { children?: ReactNode }) => (
+    <h2 className="text-sm font-semibold text-copy-primary mb-2 mt-4">{children}</h2>
+  ),
+  h3: ({ children }: { children?: ReactNode }) => (
+    <h3 className="text-sm font-medium text-copy-primary mb-2 mt-3">{children}</h3>
+  ),
+  p: ({ children }: { children?: ReactNode }) => (
+    <p className="text-sm text-copy-primary mb-3 leading-relaxed">{children}</p>
+  ),
+  ul: ({ children }: { children?: ReactNode }) => (
+    <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>
+  ),
+  ol: ({ children }: { children?: ReactNode }) => (
+    <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>
+  ),
+  li: ({ children }: { children?: ReactNode }) => (
+    <li className="text-sm text-copy-primary">{children}</li>
+  ),
+  code: ({ children, className }: { children?: ReactNode; className?: string }) => {
+    const isBlock = Boolean(className)
+    return isBlock ? (
+      <code className="block p-3 rounded-xl bg-surface text-xs font-mono text-ai-text overflow-x-auto mb-3">{children}</code>
+    ) : (
+      <code className="px-1 py-0.5 rounded bg-surface text-ai-text text-xs font-mono">{children}</code>
+    )
+  },
+  pre: ({ children }: { children?: ReactNode }) => (
+    <pre className="mb-3 overflow-x-auto rounded-xl">{children}</pre>
+  ),
+  hr: () => <hr className="border-surface-border my-4" />,
+  strong: ({ children }: { children?: ReactNode }) => (
+    <strong className="font-semibold text-copy-primary">{children}</strong>
+  ),
+  em: ({ children }: { children?: ReactNode }) => (
+    <em className="italic text-copy-primary">{children}</em>
+  ),
+  blockquote: ({ children }: { children?: ReactNode }) => (
+    <blockquote className="border-l-2 border-ai-accent pl-3 mb-3 text-copy-muted">{children}</blockquote>
+  ),
+}
+
+export function AISidebar({ onClose, roomId, onThinkingChange, getCanvasSnapshot }: AISidebarProps) {
   const [input, setInput] = useState('')
   const [chatInput, setChatInput] = useState('')
   const [chatSendError, setChatSendError] = useState<string | null>(null)
@@ -127,6 +193,19 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const architectScrollRef = useRef<HTMLDivElement>(null)
   const completionHandledRef = useRef(false)
+
+  // Specs tab state
+  const [specs, setSpecs] = useState<SpecItem[]>([])
+  const [specsLoading, setSpecsLoading] = useState(false)
+  const [specsError, setSpecsError] = useState<string | null>(null)
+  const [isSpecGenerating, setIsSpecGenerating] = useState(false)
+  const [specGenError, setSpecGenError] = useState<string | null>(null)
+  const [specRunId, setSpecRunId] = useState<string | null>(null)
+  const [specPublicToken, setSpecPublicToken] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewSpec, setPreviewSpec] = useState<SpecItem | null>(null)
+  const [previewContent, setPreviewContent] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   const me = useSelf()
   const createFeed = useCreateFeed()
@@ -147,6 +226,152 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
   const architectMessages = (rawArchitectMessages ?? [])
     .map((m) => ({ id: m.id, data: validateAiChatMessage(m.data) }))
     .filter((m): m is { id: string; data: NonNullable<ReturnType<typeof validateAiChatMessage>> } => m.data !== null)
+
+  // --- Spec list ---
+
+  const fetchSpecs = useCallback(async () => {
+    setSpecsLoading(true)
+    setSpecsError(null)
+    try {
+      const res = await fetch(`/api/projects/${roomId}/specs`)
+      if (!res.ok) throw new Error('fetch-failed')
+      const body: unknown = await res.json()
+      if (isObject(body) && Array.isArray(body.specs)) {
+        setSpecs(body.specs as SpecItem[])
+      }
+    } catch {
+      setSpecsError('Failed to load specs. Please try again.')
+    } finally {
+      setSpecsLoading(false)
+    }
+  }, [roomId])
+
+  const handleTabChange = useCallback((value: string) => {
+    if (value === 'specs') {
+      fetchSpecs()
+    }
+  }, [fetchSpecs])
+
+  // --- Download helper ---
+
+  const downloadSpec = useCallback(async (specId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    try {
+      const res = await fetch(`/api/projects/${roomId}/specs/${specId}/download`)
+      if (!res.ok) throw new Error('download-failed')
+      const text = await res.text()
+      const blob = new Blob([text], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `spec-${specId}.md`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { /* silently fail — network issues */ }
+  }, [roomId])
+
+  // --- Preview modal ---
+
+  const openPreview = useCallback(async (spec: SpecItem) => {
+    setPreviewSpec(spec)
+    setPreviewContent(null)
+    setPreviewLoading(true)
+    setPreviewOpen(true)
+    try {
+      const res = await fetch(`/api/projects/${roomId}/specs/${spec.id}/download`)
+      if (!res.ok) throw new Error('fetch-failed')
+      const text = await res.text()
+      setPreviewContent(text)
+    } catch {
+      setPreviewContent(null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [roomId])
+
+  // --- Generate Spec ---
+
+  const specCompletionHandledRef = useRef(false)
+
+  const handleSpecRunComplete = useCallback(async (succeeded: boolean) => {
+    if (specCompletionHandledRef.current) return
+    specCompletionHandledRef.current = true
+    setIsSpecGenerating(false)
+    setSpecRunId(null)
+    setSpecPublicToken(null)
+    if (succeeded) {
+      await fetchSpecs()
+    } else {
+      setSpecGenError('Spec generation failed. Please try again.')
+    }
+  }, [fetchSpecs])
+
+  const submitSpec = useCallback(async () => {
+    if (isSpecGenerating) return
+
+    setIsSpecGenerating(true)
+    setSpecGenError(null)
+    specCompletionHandledRef.current = false
+
+    const snapshot = getCanvasSnapshot?.() ?? { nodes: [], edges: [] }
+    const chatHistory = architectMessages.map((m) => ({
+      role: m.data.role,
+      content: m.data.content,
+    }))
+
+    let hasStartedRun = false
+
+    try {
+      const res = await fetch('/api/ai/spec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          chatHistory,
+          nodes: snapshot.nodes,
+          edges: snapshot.edges,
+        }),
+      })
+      if (!res.ok) throw new Error('spec-api')
+
+      const body: unknown = await res.json()
+      if (!isObject(body) || typeof body.runId !== 'string') throw new Error('spec-api-shape')
+
+      const newRunId = body.runId
+      hasStartedRun = true
+
+      if (body.trackingUnavailable === true) {
+        setSpecGenError('Spec generation started. Refresh the list in a moment.')
+        setIsSpecGenerating(false)
+        return
+      }
+
+      const tokenRes = await fetch('/api/ai/spec/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId: newRunId }),
+      })
+      if (!tokenRes.ok) throw new Error('token-api')
+
+      const tokenBody: unknown = await tokenRes.json()
+      if (!isObject(tokenBody) || typeof tokenBody.token !== 'string') throw new Error('token-shape')
+
+      setSpecRunId(newRunId)
+      setSpecPublicToken(tokenBody.token)
+    } catch {
+      setIsSpecGenerating(false)
+      setSpecRunId(null)
+      setSpecPublicToken(null)
+      specCompletionHandledRef.current = true
+      if (hasStartedRun) {
+        setSpecGenError('Spec generation started. Refresh the list in a moment.')
+      } else {
+        setSpecGenError('Failed to start spec generation. Please try again.')
+      }
+    }
+  }, [isSpecGenerating, roomId, getCanvasSnapshot, architectMessages])
+
+  // --- Design run ---
 
   const handleRunComplete = useCallback(
     async (succeeded: boolean) => {
@@ -171,8 +396,6 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
     [createFeedMessage, onThinkingChange, roomId],
   )
 
-  // Listen for ai-status broadcasts directly from the Liveblocks room. This is
-  // also the fallback completion signal if Trigger realtime tracking is unavailable.
   useEventListener(({ event }) => {
     const payload = validateAiStatusPayload(event)
     if (!payload) return
@@ -191,7 +414,6 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }, [])
 
-  // AI Architect: push user message to architect feed, call design API, fetch token, track run
   const submitAi = useCallback(async () => {
     const trimmed = input.trim()
     if (!trimmed || isLoading) return
@@ -287,7 +509,6 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
     }
   }, [input, isLoading, roomId, createFeedMessage, me, onThinkingChange])
 
-  // Chat: writes to ai-chat feed only — does NOT trigger the AI design agent
   const submitChat = useCallback(async () => {
     const trimmed = chatInput.trim()
     if (!trimmed) return
@@ -371,7 +592,7 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="architect" className="flex-1 flex flex-col min-h-0">
+      <Tabs defaultValue="architect" className="flex-1 flex flex-col min-h-0" onValueChange={handleTabChange}>
         <TabsList className="flex-none mx-4 mt-3 grid grid-cols-3 h-9 bg-surface rounded-xl">
           <TabsTrigger
             value="architect"
@@ -393,7 +614,7 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
           </TabsTrigger>
         </TabsList>
 
-        {/* AI Architect tab — full submit/track/complete flow */}
+        {/* AI Architect tab */}
         <TabsContent value="architect" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
           <div ref={architectScrollRef} className="flex-1 overflow-y-auto px-4 py-3">
             {architectMessages.length === 0 ? (
@@ -452,7 +673,6 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
           </div>
 
           <div className="flex-none p-3 border-t border-surface-border">
-            {/* Status strip — compact bar above input, visible only while run is active */}
             {isLoading && visibleStatusText && (
               <div className="mb-2 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-ai-accent/30">
                 <span className="h-1.5 w-1.5 rounded-full bg-ai-accent animate-pulse flex-none" />
@@ -497,7 +717,7 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
           </div>
         </TabsContent>
 
-        {/* Chat tab — real-time room chat via ai-chat Liveblocks feed */}
+        {/* Chat tab */}
         <TabsContent value="chat" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
           <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 py-3">
             {chatMessages.length === 0 ? (
@@ -580,39 +800,98 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
         </TabsContent>
 
         {/* Specs tab */}
-        <TabsContent value="specs" className="flex-1 px-4 py-3 mt-0 data-[state=inactive]:hidden">
-          <div className="flex flex-col gap-4">
-            <Button className="w-full bg-ai-accent text-white hover:bg-ai-accent/90">
-              Generate Spec
+        <TabsContent value="specs" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
+          {/* Generate button */}
+          <div className="flex-none px-4 pt-3 pb-2 border-b border-surface-border">
+            <Button
+              onClick={submitSpec}
+              disabled={isSpecGenerating}
+              className="w-full bg-ai-accent text-white hover:bg-ai-accent/90 disabled:opacity-60"
+            >
+              {isSpecGenerating ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                'Generate Spec'
+              )}
             </Button>
-            <div className="rounded-2xl border border-surface-border bg-elevated p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-none h-9 w-9 rounded-xl bg-surface flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-ai-text" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-copy-primary leading-tight">
-                    Microservices Architecture
-                  </p>
-                  <p className="text-xs text-copy-muted mt-1 leading-relaxed line-clamp-2">
-                    API Gateway → Auth Service → Product Catalog → Order Processing → Notification
-                    Service
-                  </p>
-                </div>
+            {specGenError && (
+              <p className="text-[11px] text-copy-muted mt-2 text-center leading-relaxed">{specGenError}</p>
+            )}
+          </div>
+
+          {/* Spec list */}
+          <ScrollArea className="flex-1">
+            {specsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 text-copy-muted animate-spin" />
+              </div>
+            ) : specsError ? (
+              <div className="flex flex-col items-center gap-2 py-8 px-4">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <p className="text-xs text-copy-muted text-center">{specsError}</p>
                 <button
                   type="button"
-                  disabled
-                  aria-label="Download spec"
-                  className="flex-none h-7 w-7 rounded-xl flex items-center justify-center text-copy-muted disabled:opacity-30"
+                  onClick={fetchSpecs}
+                  className="text-xs text-ai-text underline underline-offset-2"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  Retry
                 </button>
               </div>
-            </div>
-          </div>
+            ) : specs.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 pt-8 pb-4 px-4">
+                <div className="h-10 w-10 rounded-2xl bg-ai-accent/10 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-copy-muted" />
+                </div>
+                <p className="text-xs text-copy-muted text-center leading-relaxed max-w-[180px]">
+                  No specs yet. Generate one to get started.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 p-3">
+                {specs.map((spec) => (
+                  <div
+                    key={spec.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openPreview(spec)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openPreview(spec) }}
+                    className="flex items-center gap-3 p-3 rounded-2xl border border-surface-border bg-elevated hover:bg-surface transition-colors cursor-pointer group"
+                  >
+                    <div className="flex-none h-8 w-8 rounded-xl bg-surface flex items-center justify-center">
+                      <FileText className="h-3.5 w-3.5 text-ai-text" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-copy-primary truncate">
+                        {getSpecFilename(spec.filePath)}
+                      </p>
+                      <p className="text-[11px] text-copy-muted">
+                        {new Date(spec.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => downloadSpec(spec.id, e)}
+                      aria-label="Download spec"
+                      className="flex-none h-7 w-7 rounded-xl flex items-center justify-center text-copy-muted hover:text-copy-primary hover:bg-surface transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </TabsContent>
       </Tabs>
 
+      {/* Design run tracker */}
       <RunTrackerErrorBoundary>
         <Suspense fallback={null}>
           {runId && publicToken && (
@@ -620,6 +899,52 @@ export function AISidebar({ onClose, roomId, onThinkingChange }: AISidebarProps)
           )}
         </Suspense>
       </RunTrackerErrorBoundary>
+
+      {/* Spec gen run tracker */}
+      <RunTrackerErrorBoundary>
+        <Suspense fallback={null}>
+          {specRunId && specPublicToken && (
+            <RunTracker runId={specRunId} publicToken={specPublicToken} onComplete={handleSpecRunComplete} />
+          )}
+        </Suspense>
+      </RunTrackerErrorBoundary>
+
+      {/* Spec preview modal */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl flex flex-col max-h-[80vh] bg-elevated border-surface-border">
+          <DialogHeader>
+            <DialogTitle className="text-copy-primary text-sm font-semibold">
+              {previewSpec ? getSpecFilename(previewSpec.filePath) : 'Spec Preview'}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 mt-2 -mx-6 px-6">
+            {previewLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-5 w-5 text-copy-muted animate-spin" />
+              </div>
+            ) : previewContent ? (
+              <div className="pb-4">
+                <ReactMarkdown components={markdownComponents}>{previewContent}</ReactMarkdown>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-10">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <p className="text-sm text-copy-muted">Failed to load spec content.</p>
+              </div>
+            )}
+          </ScrollArea>
+          <DialogFooter className="mt-4">
+            <Button
+              onClick={() => previewSpec && downloadSpec(previewSpec.id)}
+              disabled={!previewContent}
+              className="bg-ai-accent text-white hover:bg-ai-accent/90 disabled:opacity-50"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   )
 }
