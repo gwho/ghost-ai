@@ -67,9 +67,10 @@ interface CanvasFlowProps {
   isAiThinking?: boolean
   onAiStatus?: (event: { message: string; status: string }) => void
   onAiComplete?: () => void
+  onCanvasSnapshot?: (snapshot: { nodes: CanvasNode[]; edges: CanvasEdge[] }) => void
 }
 
-export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete }: CanvasFlowProps) {
+export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete, onCanvasSnapshot }: CanvasFlowProps) {
   return (
     <ReactFlowProvider>
       <CanvasFlowInner
@@ -81,12 +82,13 @@ export function CanvasFlow({ projectId, isTemplatesOpen, onTemplatesOpenChange, 
         isAiThinking={isAiThinking}
         onAiStatus={onAiStatus}
         onAiComplete={onAiComplete}
+        onCanvasSnapshot={onCanvasSnapshot}
       />
     </ReactFlowProvider>
   )
 }
 
-function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete }: CanvasFlowProps) {
+function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete, onCanvasSnapshot }: CanvasFlowProps) {
   const {
     nodes,
     edges,
@@ -157,6 +159,10 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
   useEffect(() => {
     onManualSaveReady?.(save)
   }, [onManualSaveReady, save])
+
+  useEffect(() => {
+    onCanvasSnapshot?.({ nodes, edges })
+  }, [nodes, edges, onCanvasSnapshot])
 
   const onMouseMove = useCallback(
     (e: React.MouseEvent) => {

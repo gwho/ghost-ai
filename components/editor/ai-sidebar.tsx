@@ -315,8 +315,10 @@ export function AISidebar({ onClose, roomId, onThinkingChange, getCanvasSnapshot
 
     const snapshot = getCanvasSnapshot?.() ?? { nodes: [], edges: [] }
     const chatHistory = architectMessages.map((m) => ({
+      sender: m.data.sender,
       role: m.data.role,
       content: m.data.content,
+      timestamp: m.data.timestamp,
     }))
 
     let hasStartedRun = false

@@ -4,6 +4,7 @@ import { Component, type ReactNode } from 'react'
 import { ClientSideSuspense } from '@liveblocks/react'
 import { CanvasFlow } from '@/components/editor/canvas-flow'
 import type { SaveStatus } from '@/hooks/use-canvas-autosave'
+import type { CanvasNode, CanvasEdge } from '@/types/canvas'
 
 class LiveblocksErrorBoundary extends Component<
   { children: ReactNode },
@@ -41,9 +42,10 @@ interface CanvasWrapperProps {
   isAiThinking?: boolean
   onAiStatus?: (event: { message: string; status: string }) => void
   onAiComplete?: () => void
+  onCanvasSnapshot?: (snapshot: { nodes: CanvasNode[]; edges: CanvasEdge[] }) => void
 }
 
-export function CanvasWrapper({ roomId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete }: CanvasWrapperProps) {
+export function CanvasWrapper({ roomId, isTemplatesOpen, onTemplatesOpenChange, onSaveStatusChange, onManualSaveReady, isAiThinking, onAiStatus, onAiComplete, onCanvasSnapshot }: CanvasWrapperProps) {
   return (
     <LiveblocksErrorBoundary>
       <ClientSideSuspense
@@ -62,6 +64,7 @@ export function CanvasWrapper({ roomId, isTemplatesOpen, onTemplatesOpenChange, 
           isAiThinking={isAiThinking}
           onAiStatus={onAiStatus}
           onAiComplete={onAiComplete}
+          onCanvasSnapshot={onCanvasSnapshot}
         />
       </ClientSideSuspense>
     </LiveblocksErrorBoundary>
