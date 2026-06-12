@@ -18,18 +18,20 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 vi.mock('@/lib/project-access', () => ({
+  getCurrentIdentity: vi.fn(),
   getProjectAccess: vi.fn(),
 }))
 
 import { auth } from '@clerk/nextjs/server'
 import { get as blobGet } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
-import { getProjectAccess } from '@/lib/project-access'
+import { getCurrentIdentity, getProjectAccess } from '@/lib/project-access'
 import { GET } from '@/app/api/projects/[projectId]/specs/[specId]/download/route'
 
 const mockAuth = vi.mocked(auth)
 const mockBlobGet = vi.mocked(blobGet)
 const mockPrismaProjectSpecFindFirst = vi.mocked(prisma.projectSpec.findFirst)
+const mockGetCurrentIdentity = vi.mocked(getCurrentIdentity)
 const mockGetProjectAccess = vi.mocked(getProjectAccess)
 
 function makeRequest(
@@ -62,6 +64,10 @@ describe('GET /api/projects/[projectId]/specs/[specId]/download', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
+    mockGetCurrentIdentity.mockResolvedValue({
+      userId: 'user-abc',
+      email: 'user@example.com',
+    })
     mockGetProjectAccess.mockResolvedValue({
       project: { id: projectId } as never,
       isOwner: true,
@@ -81,6 +87,7 @@ describe('GET /api/projects/[projectId]/specs/[specId]/download', () => {
   describe('authentication', () => {
     it('returns 401 when user is not authenticated', async () => {
       mockAuth.mockResolvedValue({ userId: null } as never)
+      mockGetCurrentIdentity.mockResolvedValue(null)
 
       const [req, params] = makeRequest(projectId, specId)
       const res = await GET(req, params)
@@ -92,6 +99,7 @@ describe('GET /api/projects/[projectId]/specs/[specId]/download', () => {
 
     it('returns 401 when userId is undefined', async () => {
       mockAuth.mockResolvedValue({ userId: undefined } as never)
+      mockGetCurrentIdentity.mockResolvedValue(null)
 
       const [req, params] = makeRequest(projectId, specId)
       const res = await GET(req, params)
@@ -101,22 +109,25 @@ describe('GET /api/projects/[projectId]/specs/[specId]/download', () => {
   })
 
   describe('project access', () => {
-    it('returns 401 when user has no project access', async () => {
+    it('returns 404 when user has no project access', async () => {
       mockGetProjectAccess.mockResolvedValue(null)
 
       const [req, params] = makeRequest(projectId, specId)
       const res = await GET(req, params)
       const data = await res.json()
 
-      expect(res.status).toBe(401)
-      expect(data.error).toBe('Unauthorized')
+      expect(res.status).toBe(404)
+      expect(data.error).toBe('Not found')
     })
 
     it('verifies project access using projectId from route params', async () => {
       const [req, params] = makeRequest(projectId, specId)
       await GET(req, params)
 
-      expect(mockGetProjectAccess).toHaveBeenCalledWith(projectId)
+      expect(mockGetProjectAccess).toHaveBeenCalledWith(projectId, {
+        userId: 'user-abc',
+        email: 'user@example.com',
+      })
     })
   })
 
@@ -188,7 +199,7 @@ describe('GET /api/projects/[projectId]/specs/[specId]/download', () => {
       await GET(req, params)
 
       const callArgs = mockBlobGet.mock.calls[0]
-      expect(callArgs[1]).toEqual({ access: 'private' })
+      expect(callArgs?.[1]).toEqual({ access: 'private' })
     })
   })
 

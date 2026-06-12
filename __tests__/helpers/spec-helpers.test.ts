@@ -183,7 +183,7 @@ describe('onCanvasSnapshot effect contract', () => {
   it('is not called when onCanvasSnapshot prop is undefined', () => {
     // Mirrors: onCanvasSnapshot?.({ nodes, edges }) — optional chaining handles undefined
     let called = false
-    const onCanvasSnapshot: ((s: unknown) => void) | undefined = undefined
+    const onCanvasSnapshot = undefined as ((s: unknown) => void) | undefined
 
     // This should not throw even when the callback is undefined
     expect(() => {

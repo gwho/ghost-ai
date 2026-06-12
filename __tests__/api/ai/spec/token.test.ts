@@ -200,14 +200,16 @@ describe('POST /api/ai/spec/token', () => {
     it('sets token expiration to 1 hour', async () => {
       await POST(makeRequest({ runId: validRunId }))
 
-      const callArgs = mockTriggerCreatePublicToken.mock.calls[0][0]
+      const callArgs = mockTriggerCreatePublicToken.mock.calls[0]?.[0]
+      if (!callArgs) throw new Error('Expected createPublicToken to be called')
       expect(callArgs.expirationTime).toBe('1h')
     })
 
     it('scopes token to read-only access for the specific run', async () => {
       await POST(makeRequest({ runId: validRunId }))
 
-      const callArgs = mockTriggerCreatePublicToken.mock.calls[0][0]
+      const callArgs = mockTriggerCreatePublicToken.mock.calls[0]?.[0]
+      if (!callArgs) throw new Error('Expected createPublicToken to be called')
       expect(callArgs.scopes).toEqual({ read: { runs: [validRunId] } })
     })
   })

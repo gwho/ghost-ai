@@ -73,7 +73,8 @@ const GENERATE_RETRY_DELAY_SECONDS = [10, 20, 40]
 export const generateSpec = schemaTask({
   id: 'generate-spec',
   schema: SpecPayloadSchema,
-  retry: { maxAttempts: 2 },
+  // Persisting a spec writes Blob + Prisma side effects, so retry only the model call below.
+  retry: { maxAttempts: 1 },
   run: async (payload) => {
     const { projectId, nodes, edges, chatHistory } = payload
 

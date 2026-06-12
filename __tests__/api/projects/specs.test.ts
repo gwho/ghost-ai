@@ -10,14 +10,16 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 vi.mock('@/lib/project-access', () => ({
+  getCurrentIdentity: vi.fn(),
   getProjectAccess: vi.fn(),
 }))
 
 import { prisma } from '@/lib/prisma'
-import { getProjectAccess } from '@/lib/project-access'
+import { getCurrentIdentity, getProjectAccess } from '@/lib/project-access'
 import { GET } from '@/app/api/projects/[projectId]/specs/route'
 
 const mockPrismaProjectSpecFindMany = vi.mocked(prisma.projectSpec.findMany)
+const mockGetCurrentIdentity = vi.mocked(getCurrentIdentity)
 const mockGetProjectAccess = vi.mocked(getProjectAccess)
 
 function makeRequest(projectId: string): [NextRequest, { params: Promise<{ projectId: string }> }] {
@@ -43,6 +45,10 @@ describe('GET /api/projects/[projectId]/specs', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetCurrentIdentity.mockResolvedValue({
+      userId: 'user-abc',
+      email: 'user@example.com',
+    })
     mockGetProjectAccess.mockResolvedValue({
       project: { id: projectId } as never,
       isOwner: true,
@@ -51,8 +57,8 @@ describe('GET /api/projects/[projectId]/specs', () => {
   })
 
   describe('authorization', () => {
-    it('returns 401 when user has no project access', async () => {
-      mockGetProjectAccess.mockResolvedValue(null)
+    it('returns 401 when user is not authenticated', async () => {
+      mockGetCurrentIdentity.mockResolvedValue(null)
 
       const [req, params] = makeRequest(projectId)
       const res = await GET(req, params)
@@ -62,20 +68,34 @@ describe('GET /api/projects/[projectId]/specs', () => {
       expect(data.error).toBe('Unauthorized')
     })
 
+    it('returns 404 when user has no project access', async () => {
+      mockGetProjectAccess.mockResolvedValue(null)
+
+      const [req, params] = makeRequest(projectId)
+      const res = await GET(req, params)
+      const data = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(data.error).toBe('Not found')
+    })
+
     it('calls getProjectAccess with the projectId from params', async () => {
       const [req, params] = makeRequest(projectId)
       await GET(req, params)
 
-      expect(mockGetProjectAccess).toHaveBeenCalledWith(projectId)
+      expect(mockGetProjectAccess).toHaveBeenCalledWith(projectId, {
+        userId: 'user-abc',
+        email: 'user@example.com',
+      })
     })
 
-    it('returns 401 for a collaborator who loses access', async () => {
+    it('returns 404 for a collaborator who loses access', async () => {
       mockGetProjectAccess.mockResolvedValue(null)
 
       const [req, params] = makeRequest('nonexistent-project')
       const res = await GET(req, params)
 
-      expect(res.status).toBe(401)
+      expect(res.status).toBe(404)
     })
   })
 

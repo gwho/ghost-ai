@@ -4,7 +4,7 @@
 
 Every canvas autosave after the first one failed with:
 
-```
+```text
 Vercel Blob: This blob already exists, use `allowOverwrite: true` if you want to overwrite it.
   at async PUT (app/api/projects/[projectId]/canvas/route.ts:141:16)
 ```

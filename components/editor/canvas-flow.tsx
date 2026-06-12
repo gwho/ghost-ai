@@ -161,8 +161,9 @@ function CanvasFlowInner({ projectId, isTemplatesOpen, onTemplatesOpenChange, on
   }, [onManualSaveReady, save])
 
   useEffect(() => {
+    if (!isAutosaveReady || !onCanvasSnapshot) return
     onCanvasSnapshot?.({ nodes, edges })
-  }, [nodes, edges, onCanvasSnapshot])
+  }, [isAutosaveReady, nodes, edges, onCanvasSnapshot])
 
   const onMouseMove = useCallback(
     (e: React.MouseEvent) => {

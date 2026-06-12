@@ -1,19 +1,18 @@
-import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { get } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
-import { getProjectAccess } from '@/lib/project-access'
+import { getCurrentIdentity, getProjectAccess } from '@/lib/project-access'
 
 type Params = { params: Promise<{ projectId: string; specId: string }> }
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const identity = await getCurrentIdentity()
+  if (!identity) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { projectId, specId } = await params
 
-  const access = await getProjectAccess(projectId)
-  if (!access) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await getProjectAccess(projectId, identity)
+  if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const spec = await prisma.projectSpec.findFirst({
     where: { id: specId, projectId },

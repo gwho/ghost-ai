@@ -265,8 +265,13 @@ export function AISidebar({ onClose, roomId, onThinkingChange, getCanvasSnapshot
       const a = document.createElement('a')
       a.href = url
       a.download = `spec-${specId}.md`
-      a.click()
-      URL.revokeObjectURL(url)
+      document.body.appendChild(a)
+      try {
+        a.click()
+      } finally {
+        a.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      }
     } catch { /* silently fail — network issues */ }
   }, [roomId])
 
@@ -859,7 +864,14 @@ export function AISidebar({ onClose, roomId, onThinkingChange, getCanvasSnapshot
                     role="button"
                     tabIndex={0}
                     onClick={() => openPreview(spec)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openPreview(spec) }}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ') {
+                        e.preventDefault()
+                        openPreview(spec)
+                      } else if (e.key === 'Enter') {
+                        openPreview(spec)
+                      }
+                    }}
                     className="flex items-center gap-3 p-3 rounded-2xl border border-surface-border bg-elevated hover:bg-surface transition-colors cursor-pointer group"
                   >
                     <div className="flex-none h-8 w-8 rounded-xl bg-surface flex items-center justify-center">
