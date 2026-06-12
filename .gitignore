@@ -45,3 +45,6 @@ context/current-issues.md
 
 # antigravity CLI config (contains local paths)
 .antigravitycli
+
+# Trigger.dev runtime
+.trigger/

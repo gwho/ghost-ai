@@ -9,6 +9,7 @@ import { ShareDialog } from '@/components/editor/share-dialog'
 import { CanvasWrapper } from '@/components/editor/canvas-wrapper'
 import { AISidebar } from '@/components/editor/ai-sidebar'
 import type { SaveStatus } from '@/hooks/use-canvas-autosave'
+import type { CanvasNode, CanvasEdge } from '@/types/canvas'
 
 async function authorizeLiveblocks(room?: string) {
   const response = await fetch('/api/liveblocks-auth', {
@@ -48,6 +49,7 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [isAiThinking, setIsAiThinking] = useState(false)
   const saveRef = useRef<(() => Promise<void>) | null>(null)
+  const canvasSnapshotRef = useRef<{ nodes: CanvasNode[]; edges: CanvasEdge[] } | null>(null)
 
   const handleManualSaveReady = useCallback((fn: () => Promise<void>) => {
     saveRef.current = fn
@@ -86,6 +88,7 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
           onManualSaveReady={handleManualSaveReady}
           isAiThinking={isAiThinking}
           onAiComplete={handleAiComplete}
+          onCanvasSnapshot={(s) => { canvasSnapshotRef.current = s }}
         />
       </div>
 
@@ -143,6 +146,7 @@ export function WorkspaceShell({ project, isOwner }: WorkspaceShellProps) {
             onClose={() => setIsAISidebarOpen(false)}
             roomId={project.id}
             onThinkingChange={setIsAiThinking}
+            getCanvasSnapshot={() => canvasSnapshotRef.current}
           />
         </ClientSideSuspense>
       </div>

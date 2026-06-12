@@ -141,7 +141,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const blob = await put(
     `canvas/${projectId}.json`,
     serialized,
-    { access: 'private', contentType: 'application/json', addRandomSuffix: false },
+    { access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true },
   )
 
   await prisma.project.update({
