@@ -90,7 +90,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function getSpecFilename(filePath: string): string {
-  return filePath.split('/').pop() ?? 'spec.md'
+  return filePath.split('/').pop() || 'spec.md'
 }
 
 interface SpecItem {
