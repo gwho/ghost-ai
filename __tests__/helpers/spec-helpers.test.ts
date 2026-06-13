@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
 
 // Mirror of getSpecFilename from components/editor/ai-sidebar.tsx
 function getSpecFilename(filePath: string): string {
-  return filePath.split('/').pop() ?? 'spec.md'
+  return filePath.split('/').pop() || 'spec.md'
 }
 
 describe('getSpecFilename', () => {
@@ -27,11 +27,10 @@ describe('getSpecFilename', () => {
     expect(getSpecFilename('spec-only.md')).toBe('spec-only.md')
   })
 
-  it('returns empty string when path ends with a slash (pop returns empty, ?? only guards null/undefined)', () => {
+  it('falls back to spec.md when path ends with a slash (pop returns empty string, || catches falsy)', () => {
     // split('/').pop() on 'specs/proj/' returns '' (empty string).
-    // The ?? operator only falls back on null/undefined, not empty strings.
-    // In practice blob paths always have a filename component.
-    expect(getSpecFilename('specs/project/')).toBe('')
+    // '||' catches empty strings (falsy), so 'spec.md' is correctly returned.
+    expect(getSpecFilename('specs/project/')).toBe('spec.md')
   })
 
   it('handles deeply nested paths correctly', () => {
