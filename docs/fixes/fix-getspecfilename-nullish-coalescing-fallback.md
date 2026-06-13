@@ -27,6 +27,7 @@ left-hand side is `null` or `undefined`, not when it is any other falsy value
 | `components/editor/ai-sidebar.tsx` | 92–94 | `??` never triggers on empty `pop()` result | Fixed |
 | `__tests__/components/editor/ai-sidebar-utils.test.ts` | 16–18, 76–80, 95–98 | Mirrored buggy helper + tests documenting wrong behavior | Fixed |
 | `__tests__/helpers/spec-helpers.test.ts` | 12–14, 30–35 | Same mirrored helper + trailing-slash test | Fixed |
+| `__tests__/utils/spec-filename.test.ts` | 15–17, 43–52 | Same mirrored helper + empty/trailing-slash expectations | Fixed |
 
 ---
 
@@ -136,6 +137,7 @@ npx vitest run __tests__/components/editor/ai-sidebar-utils.test.ts __tests__/he
 ```
 
 - All 53 tests pass (36 in ai-sidebar-utils, 17 in spec-helpers)
+- `npx vitest run __tests__/utils/spec-filename.test.ts` passes 9/9 tests
 - IDE linter — no errors on changed files
 
 ---
@@ -147,5 +149,6 @@ npx vitest run __tests__/components/editor/ai-sidebar-utils.test.ts __tests__/he
 | `components/editor/ai-sidebar.tsx` | `??` → `\|\|` in `getSpecFilename` |
 | `__tests__/components/editor/ai-sidebar-utils.test.ts` | Pulled from remote branch; fixed helper + 2 test expectations; added sessionStorage mock for node env |
 | `__tests__/helpers/spec-helpers.test.ts` | Fixed mirrored helper + trailing-slash test expectation |
+| `__tests__/utils/spec-filename.test.ts` | Fixed mirrored helper, empty-input expectation, trailing-slash expectation, and test names |
 | `docs/fixes/fix-getspecfilename-nullish-coalescing-fallback.md` | This document |
 | `docs/plans/fix-getspecfilename-nullish-coalescing-fallback-plan.md` | Implementation plan |

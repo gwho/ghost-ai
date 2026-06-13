@@ -18,186 +18,138 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentIdentity, getProjectAccess } from '@/lib/project-access'
 import { GET } from '@/app/api/projects/[projectId]/specs/route'
 
-const mockPrismaProjectSpecFindMany = vi.mocked(prisma.projectSpec.findMany)
 const mockGetCurrentIdentity = vi.mocked(getCurrentIdentity)
 const mockGetProjectAccess = vi.mocked(getProjectAccess)
+const mockPrismaProjectSpecFindMany = vi.mocked(prisma.projectSpec.findMany)
 
-function makeRequest(projectId: string): [NextRequest, { params: Promise<{ projectId: string }> }] {
-  const req = new NextRequest(`http://localhost/api/projects/${projectId}/specs`)
-  const params = { params: Promise.resolve({ projectId }) }
-  return [req, params]
+const mockIdentity = { userId: 'user-abc', email: 'user@example.com' }
+
+function makeRequest(): NextRequest {
+  return new NextRequest('http://localhost/api/projects/project-123/specs', {
+    method: 'GET',
+  })
+}
+
+function makeParams(projectId: string) {
+  return { params: Promise.resolve({ projectId }) }
 }
 
 describe('GET /api/projects/[projectId]/specs', () => {
-  const projectId = 'project-abc'
-  const mockSpecs = [
-    {
-      id: 'spec-1',
-      filePath: 'https://blob.vercel.com/specs/project-abc/spec-1.md',
-      createdAt: new Date('2024-01-15T10:00:00Z'),
-    },
-    {
-      id: 'spec-2',
-      filePath: 'https://blob.vercel.com/specs/project-abc/spec-2.md',
-      createdAt: new Date('2024-01-14T10:00:00Z'),
-    },
-  ]
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetCurrentIdentity.mockResolvedValue({
-      userId: 'user-abc',
-      email: 'user@example.com',
-    })
-    mockGetProjectAccess.mockResolvedValue({
-      project: { id: projectId } as never,
-      isOwner: true,
-    })
-    mockPrismaProjectSpecFindMany.mockResolvedValue(mockSpecs as never)
+    mockGetCurrentIdentity.mockResolvedValue(mockIdentity)
   })
 
   describe('authorization', () => {
     it('returns 401 when user is not authenticated', async () => {
-      mockGetCurrentIdentity.mockResolvedValue(null)
+      mockGetCurrentIdentity.mockResolvedValueOnce(null)
 
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
+      const res = await GET(makeRequest(), makeParams('project-123'))
+      const body = await res.json()
 
       expect(res.status).toBe(401)
-      expect(data.error).toBe('Unauthorized')
+      expect(body).toEqual({ error: 'Unauthorized' })
     })
 
     it('returns 404 when user has no project access', async () => {
-      mockGetProjectAccess.mockResolvedValue(null)
+      mockGetProjectAccess.mockResolvedValueOnce(null)
 
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
+      const res = await GET(makeRequest(), makeParams('project-123'))
+      const body = await res.json()
 
       expect(res.status).toBe(404)
-      expect(data.error).toBe('Not found')
+      expect(body).toEqual({ error: 'Not found' })
     })
 
-    it('calls getProjectAccess with the projectId from params', async () => {
-      const [req, params] = makeRequest(projectId)
-      await GET(req, params)
+    it('calls getProjectAccess with the correct projectId from params', async () => {
+      mockGetProjectAccess.mockResolvedValueOnce(null)
 
-      expect(mockGetProjectAccess).toHaveBeenCalledWith(projectId, {
-        userId: 'user-abc',
-        email: 'user@example.com',
+      await GET(makeRequest(), makeParams('proj-specific-id'))
+
+      expect(mockGetProjectAccess).toHaveBeenCalledWith('proj-specific-id', mockIdentity)
+    })
+  })
+
+  describe('spec listing', () => {
+    beforeEach(() => {
+      mockGetProjectAccess.mockResolvedValue({ project: { id: 'project-123' }, isOwner: true } as never)
+    })
+
+    it('returns specs for the project', async () => {
+      const isoDate = '2024-01-15T10:00:00.000Z'
+      const specs = [
+        { id: 'spec-1', filePath: 'https://blob.example.com/specs/project-123/spec-1.md', createdAt: isoDate },
+        { id: 'spec-2', filePath: 'https://blob.example.com/specs/project-123/spec-2.md', createdAt: isoDate },
+      ]
+      mockPrismaProjectSpecFindMany.mockResolvedValueOnce(specs as never)
+
+      const res = await GET(makeRequest(), makeParams('project-123'))
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body).toEqual({ specs })
+    })
+
+    it('returns empty specs array when no specs exist', async () => {
+      mockPrismaProjectSpecFindMany.mockResolvedValueOnce([])
+
+      const res = await GET(makeRequest(), makeParams('project-123'))
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body).toEqual({ specs: [] })
+    })
+
+    it('queries with correct projectId and ordering', async () => {
+      mockPrismaProjectSpecFindMany.mockResolvedValueOnce([])
+
+      await GET(makeRequest(), makeParams('project-abc'))
+
+      expect(mockPrismaProjectSpecFindMany).toHaveBeenCalledWith({
+        where: { projectId: 'project-abc' },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, filePath: true, createdAt: true },
       })
     })
 
-    it('returns 404 for a collaborator who loses access', async () => {
-      mockGetProjectAccess.mockResolvedValue(null)
+    it('selects only id, filePath, and createdAt (not full spec content)', async () => {
+      mockPrismaProjectSpecFindMany.mockResolvedValueOnce([])
 
-      const [req, params] = makeRequest('nonexistent-project')
-      const res = await GET(req, params)
+      await GET(makeRequest(), makeParams('project-123'))
 
-      expect(res.status).toBe(404)
+      const callArgs = mockPrismaProjectSpecFindMany.mock.calls[0][0]
+      expect(callArgs.select).toEqual({ id: true, filePath: true, createdAt: true })
+      expect(callArgs.select).not.toHaveProperty('content')
+    })
+
+    it('orders results by createdAt descending (newest first)', async () => {
+      mockPrismaProjectSpecFindMany.mockResolvedValueOnce([])
+
+      await GET(makeRequest(), makeParams('project-123'))
+
+      const callArgs = mockPrismaProjectSpecFindMany.mock.calls[0][0]
+      expect(callArgs.orderBy).toEqual({ createdAt: 'desc' })
+    })
+
+    it('returns 500 when Prisma findMany fails', async () => {
+      mockPrismaProjectSpecFindMany.mockRejectedValueOnce(new Error('Database connection failed'))
+
+      const res = await GET(makeRequest(), makeParams('project-123'))
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body).toEqual({ error: 'Failed to load specs' })
     })
   })
 
-  describe('successful spec listing', () => {
-    it('returns 200 with specs array', async () => {
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
+  describe('collaborator access', () => {
+    it('allows non-owner collaborators to list specs', async () => {
+      mockGetProjectAccess.mockResolvedValueOnce({ project: { id: 'project-123' }, isOwner: false } as never)
+      mockPrismaProjectSpecFindMany.mockResolvedValueOnce([])
+
+      const res = await GET(makeRequest(), makeParams('project-123'))
 
       expect(res.status).toBe(200)
-      expect(data).toHaveProperty('specs')
-      expect(Array.isArray(data.specs)).toBe(true)
-    })
-
-    it('returns the correct number of specs', async () => {
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(data.specs).toHaveLength(2)
-    })
-
-    it('queries specs for the correct projectId', async () => {
-      const [req, params] = makeRequest(projectId)
-      await GET(req, params)
-
-      expect(mockPrismaProjectSpecFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { projectId },
-        })
-      )
-    })
-
-    it('orders specs by createdAt descending', async () => {
-      const [req, params] = makeRequest(projectId)
-      await GET(req, params)
-
-      expect(mockPrismaProjectSpecFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          orderBy: { createdAt: 'desc' },
-        })
-      )
-    })
-
-    it('selects only id, filePath, and createdAt fields', async () => {
-      const [req, params] = makeRequest(projectId)
-      await GET(req, params)
-
-      expect(mockPrismaProjectSpecFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          select: { id: true, filePath: true, createdAt: true },
-        })
-      )
-    })
-
-    it('returns empty array when no specs exist', async () => {
-      mockPrismaProjectSpecFindMany.mockResolvedValue([])
-
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(res.status).toBe(200)
-      expect(data.specs).toEqual([])
-    })
-
-    it('includes filePath in each spec item', async () => {
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(data.specs[0]).toHaveProperty('filePath')
-    })
-
-    it('includes id in each spec item', async () => {
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(data.specs[0]).toHaveProperty('id')
-    })
-
-    it('includes createdAt in each spec item', async () => {
-      const [req, params] = makeRequest(projectId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(data.specs[0]).toHaveProperty('createdAt')
-    })
-  })
-
-  describe('regression: cross-project data isolation', () => {
-    it('does not return specs from a different project', async () => {
-      const [req, params] = makeRequest('other-project')
-      await GET(req, params)
-
-      expect(mockPrismaProjectSpecFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { projectId: 'other-project' },
-        })
-      )
-      // The call is scoped to the requested projectId, not a hardcoded one
     })
   })
 })

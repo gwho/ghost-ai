@@ -31,216 +31,202 @@ import { getProjectAccess } from '@/lib/project-access'
 import { POST } from '@/app/api/ai/spec/route'
 
 const mockAuth = vi.mocked(auth)
-const mockPrismaTaskRunCreate = vi.mocked(prisma.taskRun.create)
-const mockTasksTrigger = vi.mocked(tasks.trigger)
 const mockGetProjectAccess = vi.mocked(getProjectAccess)
+const mockTasksTrigger = vi.mocked(tasks.trigger)
+const mockPrismaTaskRunCreate = vi.mocked(prisma.taskRun.create)
 
-function makeRequest(body: unknown, options: { malformed?: boolean } = {}): NextRequest {
-  if (options.malformed) {
-    return new NextRequest('http://localhost/api/ai/spec', {
-      method: 'POST',
-      body: 'not-json{{{',
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+function makeRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost/api/ai/spec', {
     method: 'POST',
-    body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   })
 }
 
-describe('POST /api/ai/spec', () => {
-  const validBody = {
-    roomId: 'project-123',
-    chatHistory: [{ sender: 'User', role: 'user', content: 'Build a CI/CD pipeline', timestamp: 1000 }],
-    nodes: [{ id: 'node-1', data: { label: 'API Gateway' }, position: { x: 0, y: 0 } }],
-    edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2' }],
-  }
+function makeInvalidJsonRequest(): NextRequest {
+  return new NextRequest('http://localhost/api/ai/spec', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: 'not-json{',
+  })
+}
 
+const validBody = {
+  roomId: 'project-123',
+  chatHistory: [{ role: 'user', content: 'Build a CI/CD pipeline' }],
+  nodes: [{ id: 'node-1', label: 'API Gateway' }],
+  edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2' }],
+}
+
+describe('POST /api/ai/spec', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
-    mockGetProjectAccess.mockResolvedValue({
-      project: { id: 'project-123' } as never,
-      isOwner: true,
-    })
-    mockTasksTrigger.mockResolvedValue({ id: 'run-xyz' } as never)
-    mockPrismaTaskRunCreate.mockResolvedValue({} as never)
   })
 
   describe('authentication', () => {
     it('returns 401 when user is not authenticated', async () => {
-      mockAuth.mockResolvedValue({ userId: null } as never)
+      mockAuth.mockResolvedValueOnce({ userId: null } as never)
 
       const res = await POST(makeRequest(validBody))
-      const data = await res.json()
+      const body = await res.json()
 
       expect(res.status).toBe(401)
-      expect(data.error).toBe('Unauthorized')
+      expect(body).toEqual({ error: 'Unauthorized' })
     })
 
-    it('returns 401 when auth returns undefined userId', async () => {
-      mockAuth.mockResolvedValue({ userId: undefined } as never)
+    it('proceeds when user is authenticated', async () => {
+      mockAuth.mockResolvedValueOnce({ userId: 'user-abc' } as never)
+      mockGetProjectAccess.mockResolvedValueOnce({ project: { id: 'project-123' }, isOwner: true } as never)
+      mockTasksTrigger.mockResolvedValueOnce({ id: 'run-xyz' } as never)
+      mockPrismaTaskRunCreate.mockResolvedValueOnce({} as never)
 
       const res = await POST(makeRequest(validBody))
-
-      expect(res.status).toBe(401)
-    })
-  })
-
-  describe('request body validation', () => {
-    it('returns 400 for malformed JSON', async () => {
-      const res = await POST(makeRequest(null, { malformed: true }))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Malformed JSON')
-    })
-
-    it('returns 400 when body is null', async () => {
-      const res = await POST(makeRequest(null))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Request body must be a JSON object')
-    })
-
-    it('returns 400 when body is an array', async () => {
-      const res = await POST(makeRequest([]))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Request body must be a JSON object')
-    })
-
-    it('returns 400 when body is a string (not an object)', async () => {
-      // JSON.stringify("string") => '"string"' which parses as a string, not object
-      const req = new NextRequest('http://localhost/api/ai/spec', {
-        method: 'POST',
-        body: '"just-a-string"',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      const res = await POST(req)
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Request body must be a JSON object')
-    })
-
-    it('returns 400 when roomId is missing', async () => {
-      const { roomId: _, ...bodyWithoutRoomId } = validBody
-      const res = await POST(makeRequest(bodyWithoutRoomId))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Missing or invalid roomId')
-    })
-
-    it('returns 400 when roomId is not a string', async () => {
-      const res = await POST(makeRequest({ ...validBody, roomId: 42 }))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Missing or invalid roomId')
-    })
-
-    it('returns 400 when roomId is an empty string', async () => {
-      const res = await POST(makeRequest({ ...validBody, roomId: '' }))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('Missing or invalid roomId')
-    })
-
-    it('returns 400 when chatHistory is missing', async () => {
-      const { chatHistory: _, ...body } = validBody
-      const res = await POST(makeRequest(body))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('chatHistory must be an array')
-    })
-
-    it('returns 400 when chatHistory is not an array', async () => {
-      const res = await POST(makeRequest({ ...validBody, chatHistory: 'not-array' }))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('chatHistory must be an array')
-    })
-
-    it('returns 400 when nodes is missing', async () => {
-      const { nodes: _, ...body } = validBody
-      const res = await POST(makeRequest(body))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('nodes must be an array')
-    })
-
-    it('returns 400 when nodes is not an array', async () => {
-      const res = await POST(makeRequest({ ...validBody, nodes: {} }))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('nodes must be an array')
-    })
-
-    it('returns 400 when edges is missing', async () => {
-      const { edges: _, ...body } = validBody
-      const res = await POST(makeRequest(body))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('edges must be an array')
-    })
-
-    it('returns 400 when edges is not an array', async () => {
-      const res = await POST(makeRequest({ ...validBody, edges: null }))
-      const data = await res.json()
-
-      expect(res.status).toBe(400)
-      expect(data.error).toBe('edges must be an array')
-    })
-
-    it('accepts empty arrays for chatHistory, nodes, and edges', async () => {
-      const res = await POST(makeRequest({ ...validBody, chatHistory: [], nodes: [], edges: [] }))
 
       expect(res.status).toBe(201)
     })
   })
 
-  describe('project access', () => {
-    it('returns 404 when project is not found or user has no access', async () => {
-      mockGetProjectAccess.mockResolvedValue(null)
-
-      const res = await POST(makeRequest(validBody))
-      const data = await res.json()
-
-      expect(res.status).toBe(404)
-      expect(data.error).toBe('Not found')
+  describe('request body validation', () => {
+    beforeEach(() => {
+      mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
     })
 
-    it('uses roomId as projectId (never a client-supplied projectId)', async () => {
-      await POST(makeRequest(validBody))
+    it('returns 400 for malformed JSON', async () => {
+      const res = await POST(makeInvalidJsonRequest())
+      const body = await res.json()
 
-      expect(mockGetProjectAccess).toHaveBeenCalledWith('project-123')
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'Malformed JSON' })
+    })
+
+    it('returns 400 when body is null', async () => {
+      const req = new NextRequest('http://localhost/api/ai/spec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'null',
+      })
+      const res = await POST(req)
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'Request body must be a JSON object' })
+    })
+
+    it('returns 400 when body is an array', async () => {
+      const res = await POST(makeRequest([]))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'Request body must be a JSON object' })
+    })
+
+    it('returns 400 when roomId is missing', async () => {
+      const res = await POST(makeRequest({ ...validBody, roomId: undefined }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'Missing or invalid roomId' })
+    })
+
+    it('returns 400 when roomId is not a string', async () => {
+      const res = await POST(makeRequest({ ...validBody, roomId: 42 }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'Missing or invalid roomId' })
+    })
+
+    it('returns 400 when roomId is an empty string', async () => {
+      const res = await POST(makeRequest({ ...validBody, roomId: '' }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'Missing or invalid roomId' })
+    })
+
+    it('returns 400 when chatHistory is not an array', async () => {
+      const res = await POST(makeRequest({ ...validBody, chatHistory: 'not-an-array' }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'chatHistory must be an array' })
+    })
+
+    it('returns 400 when chatHistory is null', async () => {
+      const res = await POST(makeRequest({ ...validBody, chatHistory: null }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'chatHistory must be an array' })
+    })
+
+    it('returns 400 when nodes is not an array', async () => {
+      const res = await POST(makeRequest({ ...validBody, nodes: {} }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'nodes must be an array' })
+    })
+
+    it('returns 400 when edges is not an array', async () => {
+      const res = await POST(makeRequest({ ...validBody, edges: 'edges' }))
+      const body = await res.json()
+
+      expect(res.status).toBe(400)
+      expect(body).toEqual({ error: 'edges must be an array' })
+    })
+
+    it('accepts empty arrays for nodes and edges', async () => {
+      mockGetProjectAccess.mockResolvedValueOnce({ project: { id: 'project-123' }, isOwner: true } as never)
+      mockTasksTrigger.mockResolvedValueOnce({ id: 'run-xyz' } as never)
+      mockPrismaTaskRunCreate.mockResolvedValueOnce({} as never)
+
+      const res = await POST(makeRequest({ ...validBody, nodes: [], edges: [] }))
+
+      expect(res.status).toBe(201)
+    })
+  })
+
+  describe('project access check', () => {
+    beforeEach(() => {
+      mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
+    })
+
+    it('returns 404 when project is not found or user has no access', async () => {
+      mockGetProjectAccess.mockResolvedValueOnce(null)
+
+      const res = await POST(makeRequest(validBody))
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body).toEqual({ error: 'Not found' })
+    })
+
+    it('calls getProjectAccess with roomId and ignores client-supplied body.projectId', async () => {
+      mockGetProjectAccess.mockResolvedValueOnce(null)
+
+      await POST(makeRequest({
+        ...validBody,
+        roomId: 'room-abc',
+        projectId: 'attacker-project',
+      }))
+
+      expect(mockGetProjectAccess).toHaveBeenCalledWith('room-abc')
+      expect(mockGetProjectAccess).not.toHaveBeenCalledWith('attacker-project')
+      expect(mockGetProjectAccess).not.toHaveBeenCalledWith(expect.anything(), expect.anything())
     })
   })
 
   describe('task triggering', () => {
-    it('returns 502 when tasks.trigger throws', async () => {
-      mockTasksTrigger.mockRejectedValue(new Error('Trigger service unavailable'))
-
-      const res = await POST(makeRequest(validBody))
-      const data = await res.json()
-
-      expect(res.status).toBe(502)
-      expect(data.error).toBe('Failed to start spec run')
+    beforeEach(() => {
+      mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
+      mockGetProjectAccess.mockResolvedValue({ project: { id: 'project-123' }, isOwner: true } as never)
     })
 
-    it('passes correct payload to tasks.trigger', async () => {
+    it('triggers the generate-spec task with correct payload', async () => {
+      mockTasksTrigger.mockResolvedValueOnce({ id: 'run-xyz' } as never)
+      mockPrismaTaskRunCreate.mockResolvedValueOnce({} as never)
+
       await POST(makeRequest(validBody))
 
       expect(mockTasksTrigger).toHaveBeenCalledWith('generate-spec', {
@@ -251,18 +237,28 @@ describe('POST /api/ai/spec', () => {
         edges: validBody.edges,
       })
     })
+
+    it('returns 502 when task triggering fails', async () => {
+      mockTasksTrigger.mockRejectedValueOnce(new Error('Trigger.dev unavailable'))
+
+      const res = await POST(makeRequest(validBody))
+      const body = await res.json()
+
+      expect(res.status).toBe(502)
+      expect(body).toEqual({ error: 'Failed to start spec run' })
+    })
   })
 
-  describe('successful flow', () => {
-    it('returns 201 with runId on success', async () => {
-      const res = await POST(makeRequest(validBody))
-      const data = await res.json()
-
-      expect(res.status).toBe(201)
-      expect(data.runId).toBe('run-xyz')
+  describe('TaskRun persistence', () => {
+    beforeEach(() => {
+      mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
+      mockGetProjectAccess.mockResolvedValue({ project: { id: 'project-123' }, isOwner: true } as never)
+      mockTasksTrigger.mockResolvedValue({ id: 'run-xyz' } as never)
     })
 
-    it('creates a TaskRun record in the database', async () => {
+    it('creates a TaskRun record with correct data', async () => {
+      mockPrismaTaskRunCreate.mockResolvedValueOnce({} as never)
+
       await POST(makeRequest(validBody))
 
       expect(mockPrismaTaskRunCreate).toHaveBeenCalledWith({
@@ -273,28 +269,59 @@ describe('POST /api/ai/spec', () => {
         },
       })
     })
-  })
 
-  describe('partial failure handling', () => {
-    it('returns 202 with trackingUnavailable when TaskRun persistence fails after trigger', async () => {
-      mockPrismaTaskRunCreate.mockRejectedValue(new Error('DB write failed'))
+    it('returns 201 with runId on success', async () => {
+      mockPrismaTaskRunCreate.mockResolvedValueOnce({} as never)
 
       const res = await POST(makeRequest(validBody))
-      const data = await res.json()
+      const body = await res.json()
 
-      // Run was started but tracking failed
-      expect(res.status).toBe(202)
-      expect(data.runId).toBe('run-xyz')
-      expect(data.trackingUnavailable).toBe(true)
+      expect(res.status).toBe(201)
+      expect(body).toEqual({ runId: 'run-xyz' })
     })
 
-    it('still returns the runId when tracking persistence fails', async () => {
-      mockPrismaTaskRunCreate.mockRejectedValue(new Error('DB connection error'))
+    it('returns 202 with trackingUnavailable when TaskRun persistence fails', async () => {
+      mockPrismaTaskRunCreate.mockRejectedValueOnce(new Error('DB error'))
 
       const res = await POST(makeRequest(validBody))
-      const data = await res.json()
+      const body = await res.json()
 
-      expect(data.runId).toBe('run-xyz')
+      expect(res.status).toBe(202)
+      expect(body).toEqual({ runId: 'run-xyz', trackingUnavailable: true })
+    })
+
+    it('still returns the runId even when TaskRun persistence fails', async () => {
+      mockPrismaTaskRunCreate.mockRejectedValueOnce(new Error('DB error'))
+
+      const res = await POST(makeRequest(validBody))
+      const body = await res.json()
+
+      expect(body.runId).toBe('run-xyz')
+    })
+  })
+
+  describe('roomId as projectId', () => {
+    it('uses roomId as projectId in the task payload (never trusts client-supplied projectId)', async () => {
+      mockAuth.mockResolvedValueOnce({ userId: 'user-abc' } as never)
+      mockGetProjectAccess.mockResolvedValueOnce({ project: { id: 'room-id-is-project-id' }, isOwner: true } as never)
+      mockTasksTrigger.mockResolvedValueOnce({ id: 'run-1' } as never)
+      mockPrismaTaskRunCreate.mockResolvedValueOnce({} as never)
+
+      await POST(makeRequest({
+        ...validBody,
+        roomId: 'room-id-is-project-id',
+        projectId: 'attacker-project',
+      }))
+
+      expect(mockGetProjectAccess).toHaveBeenCalledWith('room-id-is-project-id')
+      expect(mockTasksTrigger).toHaveBeenCalledWith('generate-spec', expect.objectContaining({
+        projectId: 'room-id-is-project-id',
+        roomId: 'room-id-is-project-id',
+      }))
+      expect(mockTasksTrigger).not.toHaveBeenCalledWith(
+        'generate-spec',
+        expect.objectContaining({ projectId: 'attacker-project' }),
+      )
     })
   })
 })
