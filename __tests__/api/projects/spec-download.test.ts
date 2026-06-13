@@ -1,14 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-}))
-
-vi.mock('@vercel/blob', () => ({
-  get: vi.fn(),
-}))
-
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     projectSpec: {
@@ -22,244 +14,211 @@ vi.mock('@/lib/project-access', () => ({
   getProjectAccess: vi.fn(),
 }))
 
-import { auth } from '@clerk/nextjs/server'
-import { get as blobGet } from '@vercel/blob'
+vi.mock('@vercel/blob', () => ({
+  get: vi.fn(),
+}))
+
 import { prisma } from '@/lib/prisma'
 import { getCurrentIdentity, getProjectAccess } from '@/lib/project-access'
+import { get as blobGet } from '@vercel/blob'
 import { GET } from '@/app/api/projects/[projectId]/specs/[specId]/download/route'
 
-const mockAuth = vi.mocked(auth)
-const mockBlobGet = vi.mocked(blobGet)
-const mockPrismaProjectSpecFindFirst = vi.mocked(prisma.projectSpec.findFirst)
 const mockGetCurrentIdentity = vi.mocked(getCurrentIdentity)
 const mockGetProjectAccess = vi.mocked(getProjectAccess)
+const mockPrismaProjectSpecFindFirst = vi.mocked(prisma.projectSpec.findFirst)
+const mockBlobGet = vi.mocked(blobGet)
 
-function makeRequest(
-  projectId: string,
-  specId: string,
-): [NextRequest, { params: Promise<{ projectId: string; specId: string }> }] {
-  const req = new NextRequest(
-    `http://localhost/api/projects/${projectId}/specs/${specId}/download`,
-  )
-  const params = { params: Promise.resolve({ projectId, specId }) }
-  return [req, params]
+const mockIdentity = { userId: 'user-abc', email: 'user@example.com' }
+
+function makeRequest(): NextRequest {
+  return new NextRequest('http://localhost/api/projects/project-123/specs/spec-abc/download', {
+    method: 'GET',
+  })
 }
 
-function makeMockStream(content: string): ReadableStream<Uint8Array> {
+function makeParams(projectId: string, specId: string) {
+  return { params: Promise.resolve({ projectId, specId }) }
+}
+
+function makeStreamFromText(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
+  const encoded = encoder.encode(text)
   return new ReadableStream({
     start(controller) {
-      controller.enqueue(encoder.encode(content))
+      controller.enqueue(encoded)
       controller.close()
     },
   })
 }
 
 describe('GET /api/projects/[projectId]/specs/[specId]/download', () => {
-  const projectId = 'project-abc'
-  const specId = 'spec-123'
-  const markdownContent = '# Test Spec\n\nThis is a test spec.'
-  const blobUrl = `https://blob.vercel.com/specs/${projectId}/${specId}.md`
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAuth.mockResolvedValue({ userId: 'user-abc' } as never)
-    mockGetCurrentIdentity.mockResolvedValue({
-      userId: 'user-abc',
-      email: 'user@example.com',
-    })
-    mockGetProjectAccess.mockResolvedValue({
-      project: { id: projectId } as never,
-      isOwner: true,
-    })
-    mockPrismaProjectSpecFindFirst.mockResolvedValue({
-      id: specId,
-      projectId,
-      filePath: blobUrl,
-      createdAt: new Date(),
-    } as never)
-    mockBlobGet.mockResolvedValue({
-      url: blobUrl,
-      stream: makeMockStream(markdownContent),
-    } as never)
+    mockGetCurrentIdentity.mockResolvedValue(mockIdentity)
   })
 
   describe('authentication', () => {
     it('returns 401 when user is not authenticated', async () => {
-      mockAuth.mockResolvedValue({ userId: null } as never)
-      mockGetCurrentIdentity.mockResolvedValue(null)
+      mockGetCurrentIdentity.mockResolvedValueOnce(null)
 
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-      const data = await res.json()
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+      const body = await res.json()
 
       expect(res.status).toBe(401)
-      expect(data.error).toBe('Unauthorized')
-    })
-
-    it('returns 401 when userId is undefined', async () => {
-      mockAuth.mockResolvedValue({ userId: undefined } as never)
-      mockGetCurrentIdentity.mockResolvedValue(null)
-
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-
-      expect(res.status).toBe(401)
+      expect(body).toEqual({ error: 'Unauthorized' })
     })
   })
 
-  describe('project access', () => {
+  describe('project access check', () => {
     it('returns 404 when user has no project access', async () => {
-      mockGetProjectAccess.mockResolvedValue(null)
+      mockGetProjectAccess.mockResolvedValueOnce(null)
 
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-      const data = await res.json()
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+      const body = await res.json()
 
       expect(res.status).toBe(404)
-      expect(data.error).toBe('Not found')
+      expect(body).toEqual({ error: 'Not found' })
     })
 
-    it('verifies project access using projectId from route params', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      await GET(req, params)
+    it('calls getProjectAccess with the correct projectId', async () => {
+      mockGetProjectAccess.mockResolvedValueOnce(null)
 
-      expect(mockGetProjectAccess).toHaveBeenCalledWith(projectId, {
-        userId: 'user-abc',
-        email: 'user@example.com',
-      })
+      await GET(makeRequest(), makeParams('project-specific', 'spec-abc'))
+
+      expect(mockGetProjectAccess).toHaveBeenCalledWith('project-specific', mockIdentity)
     })
   })
 
-  describe('spec existence check', () => {
-    it('returns 404 when spec does not exist', async () => {
-      mockPrismaProjectSpecFindFirst.mockResolvedValue(null as never)
-
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(res.status).toBe(404)
-      expect(data.error).toBe('Not found')
+  describe('spec ownership check', () => {
+    beforeEach(() => {
+      mockGetProjectAccess.mockResolvedValue({ project: { id: 'project-123' }, isOwner: true } as never)
     })
 
-    it('queries spec with both specId and projectId to prevent cross-project access', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      await GET(req, params)
+    it('returns 404 when spec does not exist', async () => {
+      mockPrismaProjectSpecFindFirst.mockResolvedValueOnce(null)
+
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body).toEqual({ error: 'Not found' })
+    })
+
+    it('queries spec with both specId AND projectId (prevents cross-project access)', async () => {
+      mockPrismaProjectSpecFindFirst.mockResolvedValueOnce(null)
+
+      await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
 
       expect(mockPrismaProjectSpecFindFirst).toHaveBeenCalledWith({
-        where: { id: specId, projectId },
+        where: { id: 'spec-abc', projectId: 'project-123' },
       })
     })
 
-    it('does not allow fetching a spec from a different project', async () => {
-      // Spec exists but belongs to a different project — findFirst returns null
-      // because the where clause includes projectId
-      mockPrismaProjectSpecFindFirst.mockResolvedValue(null as never)
+    it('returns 404 when spec exists but belongs to a different project', async () => {
+      mockPrismaProjectSpecFindFirst.mockResolvedValueOnce(null)
 
-      const [req, params] = makeRequest('wrong-project', specId)
-      const res = await GET(req, params)
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
 
       expect(res.status).toBe(404)
     })
   })
 
-  describe('blob retrieval', () => {
-    it('returns 404 when blob returns null result', async () => {
-      mockBlobGet.mockResolvedValue(null as never)
+  describe('blob fetching', () => {
+    const mockSpec = {
+      id: 'spec-abc',
+      projectId: 'project-123',
+      filePath: 'https://blob.example.com/specs/project-123/spec-abc.md',
+      createdAt: new Date(),
+    }
 
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-      const data = await res.json()
-
-      expect(res.status).toBe(404)
-      expect(data.error).toBe('File not found')
+    beforeEach(() => {
+      mockGetProjectAccess.mockResolvedValue({ project: { id: 'project-123' }, isOwner: true } as never)
+      mockPrismaProjectSpecFindFirst.mockResolvedValue(mockSpec as never)
     })
 
-    it('returns 503 when blob fetch throws an error', async () => {
-      mockBlobGet.mockRejectedValue(new Error('Blob storage unavailable'))
+    it('fetches the blob using the spec filePath', async () => {
+      const stream = makeStreamFromText('# Test Spec')
+      mockBlobGet.mockResolvedValueOnce({ stream } as never)
 
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-      const data = await res.json()
+      await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+
+      expect(mockBlobGet).toHaveBeenCalledWith(
+        'https://blob.example.com/specs/project-123/spec-abc.md',
+        { access: 'private' },
+      )
+    })
+
+    it('returns 404 when blob returns null/undefined', async () => {
+      mockBlobGet.mockResolvedValueOnce(null as never)
+
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body).toEqual({ error: 'File not found' })
+    })
+
+    it('returns 503 when blob fetch throws', async () => {
+      mockBlobGet.mockRejectedValueOnce(new Error('Blob storage unavailable'))
+
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+      const body = await res.json()
 
       expect(res.status).toBe(503)
-      expect(data.error).toBe('Failed to retrieve spec file')
-    })
-
-    it('fetches blob using the filePath stored in the spec record', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      await GET(req, params)
-
-      expect(mockBlobGet).toHaveBeenCalledWith(blobUrl, { access: 'private' })
-    })
-
-    it('uses private access mode to fetch the blob', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      await GET(req, params)
-
-      const callArgs = mockBlobGet.mock.calls[0]
-      expect(callArgs?.[1]).toEqual({ access: 'private' })
+      expect(body).toEqual({ error: 'Failed to retrieve spec file' })
     })
   })
 
-  describe('successful download response', () => {
-    it('returns 200 with markdown content', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
+  describe('response headers', () => {
+    const mockSpec = {
+      id: 'spec-abc',
+      projectId: 'project-123',
+      filePath: 'https://blob.example.com/specs/project-123/spec-abc.md',
+      createdAt: new Date(),
+    }
 
-      expect(res.status).toBe(200)
-      const text = await res.text()
-      expect(text).toBe(markdownContent)
+    beforeEach(() => {
+      mockGetProjectAccess.mockResolvedValue({ project: { id: 'project-123' }, isOwner: true } as never)
+      mockPrismaProjectSpecFindFirst.mockResolvedValue(mockSpec as never)
     })
 
-    it('sets Content-Type to text/markdown', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
+    it('returns the spec content as text/markdown with attachment disposition', async () => {
+      const specContent = '# My Technical Spec\n\n## Overview\nThis is a test.'
+      const stream = makeStreamFromText(specContent)
+      mockBlobGet.mockResolvedValueOnce({ stream } as never)
+
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+      const responseText = await res.text()
+
+      expect(res.status).toBe(200)
+      expect(responseText).toBe(specContent)
+    })
+
+    it('sets Content-Type to text/markdown with charset', async () => {
+      const stream = makeStreamFromText('# Spec')
+      mockBlobGet.mockResolvedValueOnce({ stream } as never)
+
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
 
       expect(res.headers.get('Content-Type')).toBe('text/markdown; charset=utf-8')
     })
 
-    it('sets Content-Disposition to attachment with specId filename', async () => {
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
+    it('sets Content-Disposition as attachment with specId filename', async () => {
+      const stream = makeStreamFromText('# Spec')
+      mockBlobGet.mockResolvedValueOnce({ stream } as never)
 
-      expect(res.headers.get('Content-Disposition')).toBe(
-        `attachment; filename="spec-${specId}.md"`,
-      )
+      const res = await GET(makeRequest(), makeParams('project-123', 'spec-abc'))
+
+      expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="spec-spec-abc.md"')
     })
 
-    it('uses the correct filename in Content-Disposition header', async () => {
-      const customSpecId = 'custom-spec-id-456'
-      mockPrismaProjectSpecFindFirst.mockResolvedValue({
-        id: customSpecId,
-        projectId,
-        filePath: blobUrl,
-        createdAt: new Date(),
-      } as never)
+    it('uses the specId from URL params in the filename', async () => {
+      const stream = makeStreamFromText('# Spec')
+      mockBlobGet.mockResolvedValueOnce({ stream } as never)
 
-      const [req, params] = makeRequest(projectId, customSpecId)
-      const res = await GET(req, params)
+      const res = await GET(makeRequest(), makeParams('project-123', 'custom-spec-id'))
 
-      expect(res.headers.get('Content-Disposition')).toBe(
-        `attachment; filename="spec-${customSpecId}.md"`,
-      )
-    })
-  })
-
-  describe('regression: spec content is returned as-is', () => {
-    it('returns the exact markdown content from the blob', async () => {
-      const specificContent = '# API Gateway\n\n## Overview\nHandles all incoming requests.'
-      mockBlobGet.mockResolvedValue({
-        url: blobUrl,
-        stream: makeMockStream(specificContent),
-      } as never)
-
-      const [req, params] = makeRequest(projectId, specId)
-      const res = await GET(req, params)
-      const text = await res.text()
-
-      expect(text).toBe(specificContent)
+      expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="spec-custom-spec-id.md"')
     })
   })
 })
